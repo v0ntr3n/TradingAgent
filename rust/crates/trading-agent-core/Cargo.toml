@@ -15,5 +15,6 @@ thiserror.workspace = true
 
 [dev-dependencies]
 async-trait.workspace = true
+schemars.workspace = true
 tokio.workspace = true
 trading-agent-llm = { path = "../trading-agent-llm" }
