@@ -1,6 +1,7 @@
 //! Point-in-time-safe data contracts for TradingAgent.
 
 pub mod crypto;
+pub mod general;
 mod error;
 mod http;
 mod policy;
