@@ -8,7 +8,7 @@ Base: `main@cc2629ea1b46b83a69a0326a3534cccc3821f958`
 
 Port the TradingAgent runtime to a native Rust implementation while keeping the existing Python implementation working and unchanged on `main` until behavioral parity is demonstrated.
 
-The Rust port is not a line-by-line translation of LangGraph/LangChain. It is a typed async reimplementation of the same trading workflow, preserving the modern TradingAgents v0.6 behavior and the crypto functionality ported from Tomortec/CryptoTradingAgents. It also closes the remaining parity gaps identified during the audit: user investment preferences, user-supplied external reports, a crypto fundamentals path, and explicit support/resistance/take-profit trade levels.
+The Rust port is not a line-by-line translation of LangGraph/LangChain. It is a typed async reimplementation of the same trading workflow, preserving the modern TradingAgents v0.6 behavior, its current stock/data/provider capabilities, and the crypto functionality ported from Tomortec/CryptoTradingAgents. It also closes the remaining parity gaps identified during the audit: user investment preferences, user-supplied external reports, a crypto fundamentals path, and explicit support/resistance/take-profit trade levels.
 
 Email delivery is intentionally out of scope.
 
@@ -17,15 +17,17 @@ Email delivery is intentionally out of scope.
 The Rust port is considered ready to replace Python only when all of the following are true:
 
 1. A stock run and a crypto run can execute end to end through the same logical agent stages as the Python system.
-2. Crypto data integrations cover Binance futures enrichment, TAAPI, Alternative.me Fear & Greed, CoinStats, CoinDesk, BlockBeats, Reddit-equivalent sentiment/news input, and the existing historical look-ahead protections.
-3. The Rust runtime supports investment preferences, external reports, portfolio context, multilingual output instructions, and structured final decisions.
-4. Crypto runs can include a Fundamentals analyst rather than filtering that analyst out at CLI selection time.
-5. Trader output contains action, reasoning, entry price, support, resistance, take-profit, stop-loss, and position sizing.
-6. Checkpoint/resume, run-state persistence, report streaming, report files, and decision-memory hooks have Rust equivalents.
-7. Provider abstraction supports OpenAI-compatible endpoints and preserves the ability to use Qwen/DashScope-style compatible APIs. Other providers may be implemented through the same provider trait without changing agent code.
-8. Historical runs cannot consume current-only crypto feeds.
-9. `cargo fmt --check`, `cargo clippy -- -D warnings`, and `cargo test` pass in CI.
-10. Deterministic parity fixtures prove equivalent state transitions and data-policy behavior between Python and Rust without requiring raw LLM prose to match byte-for-byte.
+2. Existing v0.6 stock/data functionality has Rust equivalents, including Yahoo/yfinance-style market data, Alpha Vantage, SEC EDGAR fundamentals, FRED macro data, Polymarket, Reddit, Stocktwits, vendor routing, and explicit fallback-chain behavior.
+3. Crypto data integrations cover Binance futures enrichment, TAAPI, Alternative.me Fear & Greed, CoinStats, CoinDesk, BlockBeats, Reddit/social context, and the existing historical look-ahead protections.
+4. The Rust runtime supports investment preferences, external reports, portfolio context, multilingual output instructions, and structured final decisions.
+5. Crypto runs can include a Fundamentals analyst rather than filtering that analyst out at CLI selection time.
+6. Trader output contains action, reasoning, entry price, support, resistance, take-profit, stop-loss, and position sizing.
+7. Checkpoint/resume, run-state persistence, report streaming, Markdown/HTML report generation, decision-memory settlement/reflection hooks, rating integrity, and backtesting have Rust equivalents.
+8. LLM-provider parity covers the currently supported provider families: OpenAI, Anthropic, Google/Gemini, Azure OpenAI, AWS Bedrock, and the OpenAI-compatible provider registry used for compatible services such as Qwen/DashScope compatible mode, OpenRouter, Ollama, DeepSeek-style compatible endpoints, Gitee-compatible endpoints, and other configured compatible servers.
+9. Separate quick/deep model tiers can use different providers and endpoints, as in the Python v0.6 runtime.
+10. Historical runs cannot consume current-only crypto feeds or other data that violates point-in-time rules.
+11. `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace --all-features` pass in CI.
+12. Deterministic parity fixtures prove equivalent state transitions, routing, data-policy behavior, ratings, and persistence semantics between Python and Rust without requiring raw LLM prose to match byte-for-byte.
 
 ## 3. Migration strategy
 
@@ -60,20 +62,33 @@ rust/
 │   │       ├── preferences/
 │   │       ├── portfolio/
 │   │       ├── memory/
+│   │       ├── backtest/
+│   │       ├── rating/
 │   │       └── decision/
 │   ├── trading-agent-data/
 │   │   └── src/
-│   │       ├── binance/
+│   │       ├── router/
 │   │       ├── yahoo/
+│   │       ├── alpha_vantage/
+│   │       ├── sec_edgar/
+│   │       ├── fred/
+│   │       ├── polymarket/
+│   │       ├── reddit/
+│   │       ├── stocktwits/
+│   │       ├── binance/
 │   │       ├── taapi/
 │   │       ├── coindesk/
 │   │       ├── coinstats/
 │   │       ├── blockbeats/
-│   │       ├── fear_greed/
-│   │       └── reddit/
+│   │       └── fear_greed/
 │   ├── trading-agent-llm/
 │   │   └── src/
 │   │       ├── provider/
+│   │       ├── openai/
+│   │       ├── anthropic/
+│   │       ├── google/
+│   │       ├── azure/
+│   │       ├── bedrock/
 │   │       ├── openai_compatible/
 │   │       ├── structured/
 │   │       └── prompts/
@@ -178,6 +193,8 @@ Risk analysts follow the configured risk-debate depth while preserving determini
 
 Workflow transitions are encoded in Rust functions/enums, not parsed from LLM prose.
 
+The current post-decision/rating path is preserved as typed logic so invalid or unparseable final decisions remain distinguishable from valid Buy/Overweight/Hold/Underweight/Sell ratings.
+
 ## 9. Agent boundaries
 
 Each agent receives a typed context and an LLM interface. Agents do not own networking to market/news vendors.
@@ -197,9 +214,9 @@ Initial agent set:
 - Conservative Risk Analyst
 - Portfolio Manager
 
-The Fundamentals analyst is valid for both stocks and crypto. Stock fundamentals use existing stock fundamentals providers. Crypto fundamentals combine crypto-market structure and macro/asset context such as BTC dominance plus search/research-capable LLM context when configured.
+The Fundamentals analyst is valid for both stocks and crypto. Stock fundamentals use the configured stock fundamentals providers. Crypto fundamentals combine crypto-market structure and macro/asset context such as BTC dominance plus search/research-capable LLM context when configured.
 
-## 10. Data-provider interfaces
+## 10. Data-provider interfaces and routing
 
 Vendor integrations live behind small async traits. Example:
 
@@ -214,9 +231,27 @@ pub trait MarketDataSource: Send + Sync {
 }
 ```
 
-Other traits cover technical indicators, news, sentiment, fundamentals, and instrument identity.
+Other traits cover technical indicators, news, sentiment, fundamentals, macro data, prediction markets, and instrument identity.
 
-The initial crypto providers are:
+The Rust data router preserves the Python v0.6 configuration model:
+
+- category-level vendor configuration;
+- tool-level overrides that take precedence over category defaults;
+- explicit comma-separated/ordered fallback chains;
+- no silent fallback to vendors the user did not configure;
+- a `default` mode that intentionally opts into all supported vendors for a category.
+
+Initial stock/general providers include:
+
+- Yahoo/yfinance-compatible market, OHLCV, snapshot, news, and fundamentals data;
+- Alpha Vantage market, technical, news, and fundamentals data;
+- SEC EDGAR filed fundamentals/statements;
+- FRED macroeconomic series;
+- Polymarket prediction-market context;
+- Reddit social/news context;
+- Stocktwits social context.
+
+Initial crypto providers include:
 
 - Binance USD-M futures: candles, order book, 24h statistics, top/global long-short ratios, taker long-short ratio;
 - TAAPI bulk technical indicators;
@@ -224,7 +259,7 @@ The initial crypto providers are:
 - CoinStats BTC dominance and news;
 - CoinDesk news;
 - BlockBeats flash news;
-- Reddit-equivalent social/news context through the same abstract sentiment/news interfaces.
+- Reddit/social context through the same abstract sentiment/news interfaces.
 
 Yahoo/existing market sources remain the baseline market source where appropriate. Crypto enrichment augments rather than silently replaces baseline data.
 
@@ -244,7 +279,9 @@ pub enum DataStatus<T> {
 
 Agents may explain that information was unavailable or withheld, but they must never reconstruct a withheld live value through another prompt. The policy is implemented in provider/router code rather than relying only on prompt wording.
 
-## 12. LLM abstraction
+Existing knowledge-time protections for statements, news, undated tools, stale OHLCV, and social data are represented as deterministic provider/router policies and covered by parity fixtures.
+
+## 12. LLM abstraction and provider parity
 
 Agent code depends on a project-owned trait rather than directly on a third-party LLM crate:
 
@@ -262,9 +299,18 @@ pub trait LlmClient: Send + Sync {
 }
 ```
 
-The first concrete backend is OpenAI-compatible HTTP because it covers OpenAI-style APIs, Qwen/DashScope compatible mode, Gitee-compatible endpoints, OpenRouter, and other compatible servers with configurable base URLs and API-key environment variables.
+The initial Rust implementation includes provider adapters for:
 
-Provider-specific adapters may be added behind the same trait. The core workflow must not depend on provider-specific request structs.
+- OpenAI;
+- Anthropic;
+- Google/Gemini;
+- Azure OpenAI;
+- AWS Bedrock;
+- OpenAI-compatible providers through a registry and configurable base URL.
+
+The OpenAI-compatible registry preserves compatible-provider behavior for Qwen/DashScope compatible mode, OpenRouter, Ollama, DeepSeek-style compatible endpoints, Gitee-compatible endpoints, and other configured compatible services.
+
+Quick and deep model tiers retain independent provider/model/backend settings. Cross-provider options such as temperature, retry limits, and output-token caps are normalized in the project-owned configuration layer. Provider-specific reasoning/thinking options remain provider capabilities rather than leaking into agent code.
 
 Structured outputs are schema-validated. A bounded fallback may retry or accept a carefully parsed textual response, but validation failures are surfaced explicitly rather than silently constructing default financial values.
 
@@ -342,7 +388,7 @@ results/
         └── checkpoint.json
 ```
 
-A self-contained HTML report may be generated from the completed Markdown/state representation. PDF generation and email delivery are not required by this port.
+A self-contained HTML report is generated from the completed Markdown/state representation when enabled, matching the current Python reporting capability. PDF generation and email delivery are not required by this port.
 
 ## 17. Checkpoint/resume
 
@@ -353,21 +399,40 @@ A checkpoint includes:
 - schema version;
 - symbol/date/asset type;
 - a run-settings fingerprint;
+- analyst selection and debate/risk depths;
+- provider/model/vendor settings that affect generated state;
 - portfolio fingerprint when portfolio context exists;
 - completed workflow stage;
 - serialized agent state.
 
 Changing meaningful run settings invalidates the old checkpoint. Successful completion clears or archives the active checkpoint so a future run starts fresh unless the user explicitly requests reuse.
 
-## 18. Memory and reflection
+## 18. Memory, settlement, and reflection
 
 The Rust port keeps the current v0.6 concept of past-decision memory rather than restoring Tomortec's older memory implementation verbatim.
 
 Decision records include ticker, trade date, final decision/rating, and enough metadata to settle/reflect later. Historical runs only receive lessons whose resolution date is available as of the analysis date.
 
-The storage interface is abstract so the initial implementation can use JSON/SQLite without coupling agents to persistence details.
+The runtime supports settlement of due same-ticker decisions and the all-pending settlement path used when a scheduler rotates tickers. Settlement failures remain pending and do not silently mark a decision as resolved.
 
-## 19. CLI
+The storage interface is abstract so the initial implementation can use SQLite/JSON-backed persistence without coupling agents to storage details.
+
+## 19. Backtesting
+
+The Rust port includes a backtest module that reuses the same workflow/data-policy interfaces rather than a separate analysis engine.
+
+Backtesting preserves these current behaviors:
+
+- historical trade dates use point-in-time data guards;
+- configured holding period determines outcome measurement;
+- benchmark/alpha calculations remain explicit and testable;
+- final ratings/actions are recorded per run;
+- memory/reflection only sees information available by the simulated date;
+- deterministic fixtures can run without live APIs or live LLMs.
+
+The Rust port does not add exchange execution or simulated brokerage fills beyond the analytical/backtest semantics already present in the Python project.
+
+## 20. CLI
 
 The first Rust CLI supports:
 
@@ -376,21 +441,25 @@ The first Rust CLI supports:
 - asset auto-detection;
 - analyst selection;
 - research/debate depth;
-- LLM provider/model/base URL;
+- quick/deep LLM provider and model selection;
+- provider-specific or tier-specific base URLs where applicable;
 - output language;
 - investment-preferences file;
 - external-report files;
 - portfolio file;
 - checkpoint enable/resume;
-- report save/show options.
+- report save/show options;
+- non-interactive backtest invocation.
 
 Crypto analyst selection includes Fundamentals. CLI defaults should match the Python runtime where that does not conflict with restored Tomortec behavior.
 
-Non-interactive flags are required so parity and CI tests do not depend on terminal prompts.
+Non-interactive flags are required so parity and CI tests do not depend on terminal prompts. Exact reproduction of the Python Rich/questionary terminal presentation is not required; behavioral inputs and outputs are.
 
-## 20. Configuration and secrets
+## 21. Configuration and secrets
 
 Configuration is loaded from a combination of CLI arguments, environment variables, and optional config files with documented precedence.
+
+The Rust configuration layer preserves the meaning of current `TRADINGAGENTS_*` settings where the Rust runtime implements the corresponding capability, including quick/deep providers, endpoints, output language, debate/risk/tool-round limits, checkpointing, temperature, retry limits, and token limits.
 
 API secrets are read from environment variables or secret-safe configuration inputs. Secrets and credential-bearing backend URLs must not be persisted in reports, checkpoints, logs, or run-settings metadata.
 
@@ -402,7 +471,7 @@ Optional crypto keys include:
 
 Binance public market data, Alternative.me, and BlockBeats remain keyless where their public APIs permit it.
 
-## 21. Error handling
+## 22. Error handling
 
 Expected operational failures return typed errors; normal execution must not panic.
 
@@ -422,20 +491,24 @@ Vendor failures should degrade the relevant analyst evidence when safe to do so.
 
 Retry policy is bounded, uses backoff for retryable transport/rate-limit failures, and does not retry deterministic validation/input errors.
 
-## 22. Testing strategy
+## 23. Testing strategy
 
 ### Unit tests
 
 Cover:
 
-- crypto symbol normalization;
+- stock/crypto symbol normalization and safe path components;
 - date classification and historical withholding;
 - investment-preference parsing/rendering;
 - portfolio parsing/fingerprints;
-- structured trade validation;
-- Binance/TAAPI/CoinDesk/CoinStats/BlockBeats/Alternative.me response parsing;
+- structured trade/rating validation;
+- vendor-router precedence and fallback ordering;
+- Yahoo, Alpha Vantage, SEC EDGAR, FRED, Polymarket, Reddit, Stocktwits, Binance, TAAPI, CoinDesk, CoinStats, BlockBeats, and Alternative.me response parsing;
+- LLM provider registry, API-key environment mapping, quick/deep provider selection, model/endpoint validation, and provider capability flags;
 - config precedence and secret redaction;
-- checkpoint version/fingerprint checks.
+- checkpoint version/fingerprint checks;
+- memory point-in-time and settlement rules;
+- backtest holding-period and benchmark calculations.
 
 ### Workflow tests
 
@@ -447,25 +520,32 @@ Use mock data providers and a deterministic mock LLM to verify:
 - crypto Fundamentals inclusion;
 - investment preferences and external reports reach intended stages;
 - unavailable/withheld data remain distinguishable;
+- quick/deep model tiers route to the configured providers;
 - checkpoint resume starts at the correct stage;
-- reports are emitted incrementally.
+- reports are emitted incrementally;
+- final rating integrity and invalid-decision handling;
+- memory settlement/reflection hooks execute at the correct workflow boundaries.
 
 ### Python/Rust parity tests
 
 Use fixed vendor fixtures and deterministic LLM fixtures. Compare semantic state rather than natural-language text:
 
 - selected analysts;
+- vendor routing and fallback chains;
 - which vendor calls are allowed or withheld;
 - report presence/absence;
-- debate round counts;
-- trader/final action enums;
+- debate/risk/tool round counts;
+- quick/deep provider routing;
+- trader/final action enums and rating integrity;
 - availability of decision-level fields;
 - checkpoint invalidation behavior;
-- report artifact layout.
+- memory settlement visibility by analysis date;
+- backtest holding-period outcomes;
+- report artifact layout and HTML-generation toggle.
 
 The Python implementation is the reference for existing v0.6 behavior. Where this design intentionally restores a missing Tomortec capability, the parity test records that as an approved Rust extension rather than treating the Python omission as expected behavior.
 
-## 23. CI gates
+## 24. CI gates
 
 The Rust workspace adds CI checks for:
 
@@ -479,21 +559,21 @@ At least one Linux stable-Rust job is required initially. A minimum supported Ru
 
 Python CI remains unchanged during the side-by-side migration.
 
-## 24. Delivery phases
+## 25. Delivery phases
 
 Implementation is divided into dependency-ordered phases while remaining one coherent port:
 
-1. Workspace foundation, shared domain types, configuration, error model, and test harness.
-2. Data-provider traits plus stock/crypto provider implementations and historical guards.
-3. LLM abstraction, OpenAI-compatible backend, prompts, and structured output.
+1. Workspace foundation, shared domain types, configuration, error model, rating model, and test harness.
+2. Data-provider traits, router semantics, current stock/general vendors, crypto providers, and historical guards.
+3. LLM abstraction, current provider families, quick/deep tier routing, research capability, prompts, and structured output.
 4. Agent implementations and Tokio workflow orchestration.
-5. Investment preferences, external reports, portfolio, memory, checkpoint/resume.
-6. CLI and incremental reporting.
+5. Investment preferences, external reports, portfolio, memory settlement/reflection, checkpoint/resume, and rating/post-decision behavior.
+6. CLI, incremental Markdown/HTML reporting, and backtesting.
 7. Deterministic workflow/parity fixtures, CI, documentation, and final integration review.
 
 Each phase must leave the Rust workspace compiling and its completed tests passing. Features are integrated behind stable interfaces rather than creating throwaway scaffolding that is later replaced.
 
-## 25. Non-goals
+## 26. Non-goals
 
 The initial Rust port does not include:
 
@@ -501,11 +581,13 @@ The initial Rust port does not include:
 - automatic trade execution or exchange order placement;
 - Freqtrade integration;
 - UI/web frontend;
+- PDF report generation;
 - byte-for-byte reproduction of Python/LangChain/LangGraph internals;
+- exact reproduction of the Python terminal UI;
 - guaranteed identical natural-language prose across LLM providers;
 - removal of Python before Rust parity gates pass.
 
-## 26. Security and financial-safety boundaries
+## 27. Security and financial-safety boundaries
 
 The application remains an analysis/research system, not an autonomous broker.
 
@@ -513,8 +595,8 @@ The Rust runtime must not place exchange orders. External reports are treated as
 
 The final trade decision remains advisory output for a human or downstream caller to evaluate.
 
-## 27. Acceptance boundary
+## 28. Acceptance boundary
 
-This design is complete when the side-by-side Rust runtime can reproduce the existing Python core workflow with deterministic parity fixtures, includes the four missing Tomortec capabilities identified in the audit, and passes the Rust CI gates without weakening the existing Python implementation.
+This design is complete when the side-by-side Rust runtime can reproduce the existing Python core workflow and currently supported core provider/data/backtest behaviors with deterministic parity fixtures, includes the four missing Tomortec capabilities identified in the audit, and passes the Rust CI gates without weakening the existing Python implementation.
 
 Making Rust the repository's sole/default runtime is explicitly outside this design's acceptance boundary and requires a separate migration decision after parity results are reviewed.
