@@ -1,0 +1,34 @@
+name: One-shot Rustfmt
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.head_ref == 'rust-port' && github.repository == 'v0ntr3n/TradingAgent'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: rust-port
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Format Rust workspace
+        working-directory: rust
+        run: cargo fmt
+      - name: Commit rustfmt output
+        run: |
+          if git diff --quiet -- rust; then
+            echo "No formatting changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rust
+          git commit -m "style(rust): apply rustfmt"
+          git push origin HEAD:rust-port
