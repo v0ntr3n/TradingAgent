@@ -9,7 +9,7 @@ that call them therefore withhold them for historical runs.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
@@ -72,7 +72,7 @@ def _post_json(url: str, *, payload: dict[str, Any], headers=None):
 
 def _timestamp(ms: Any) -> str:
     try:
-        return datetime.fromtimestamp(float(ms) / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        return datetime.fromtimestamp(float(ms) / 1000, tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
     except (TypeError, ValueError, OSError):
         return str(ms)
 
