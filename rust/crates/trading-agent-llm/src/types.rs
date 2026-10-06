@@ -36,6 +36,7 @@ impl ProviderConfig {
             "provider": self.provider,
             "model": self.model,
             "base_url": safe_url,
+            "api_key": self.api_key.as_ref().map(|_| "<redacted>"),
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "max_retries": self.max_retries,
