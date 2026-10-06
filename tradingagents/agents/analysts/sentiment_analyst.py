@@ -30,7 +30,7 @@ from tradingagents.agents.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
-from tradingagents.agents.tools import get_news
+from tradingagents.agents.tools import get_crypto_sentiment_context, get_news
 from tradingagents.dataflows.vendors.reddit import (
     CRYPTO_SUBREDDITS,
     DEFAULT_SUBREDDITS,
@@ -59,6 +59,7 @@ def create_sentiment_analyst(llm):
         end_date = state["trade_date"]
         start_date = _seven_days_back(end_date)
         instrument_context = get_instrument_context_from_state(state)
+        asset_type = state.get("asset_type", "stock")
 
         # Pre-fetch all three sources. Each fetcher degrades gracefully and
         # returns a string (no exceptions surface from here), so the LLM
@@ -84,6 +85,14 @@ def create_sentiment_analyst(llm):
             reddit_block=reddit_block,
             subreddits=subreddits,
         )
+        if asset_type == "crypto":
+            crypto_context = get_crypto_sentiment_context.func(ticker, end_date)
+            system_message += (
+                "\n\n## Crypto-wide live sentiment enrichment\n"
+                + crypto_context
+                + "\nTreat this as broad market context, not as a substitute for "
+                  "ticker-specific news/social evidence. Historical runs may withhold it."
+            )
 
         prompt = ChatPromptTemplate.from_messages(
             [
