@@ -56,8 +56,8 @@ impl ResolvedCliConfig {
             self.trade_date,
             self.run.output_language,
             self.run.analysts,
-            quick.safe_display(),
-            deep.safe_display(),
+            human_safe_display(&quick),
+            human_safe_display(&deep),
             self.results_dir.display(),
         )
     }
@@ -267,4 +267,11 @@ fn provider_api_key(provider: &str, env: &dyn EnvSource) -> Option<String> {
         _ => &[],
     };
     keys.iter().find_map(|key| env.get(key))
+}
+
+fn human_safe_display(config: &ProviderConfig) -> String {
+    config
+        .safe_display()
+        .replace("%3Credacted%3E", "<redacted>")
+        .replace("%3credacted%3e", "<redacted>")
 }
