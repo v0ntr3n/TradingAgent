@@ -19,3 +19,4 @@ trading-agent-llm = { path = "../trading-agent-llm" }
 [dev-dependencies]
 async-trait.workspace = true
 schemars.workspace = true
+tempfile.workspace = true
