@@ -91,8 +91,7 @@ impl LlmClient for InstrumentedClient {
         if matches!(label.as_str(), "market" | "sentiment" | "news" | "fundamentals") {
             let active = self.active_analysts.fetch_add(1, Ordering::SeqCst) + 1;
             self.max_active_analysts.fetch_max(active, Ordering::SeqCst);
-            tokio::task::yield_now().await;
-            tokio::task::yield_now().await;
+            std::thread::sleep(std::time::Duration::from_millis(20));
             self.active_analysts.fetch_sub(1, Ordering::SeqCst);
         }
 
