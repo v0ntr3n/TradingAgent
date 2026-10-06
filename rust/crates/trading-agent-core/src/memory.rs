@@ -73,8 +73,9 @@ impl JsonDecisionMemory {
 
     fn write_records(&self, records: &[DecisionRecord]) -> Result<(), CoreError> {
         if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|error| CoreError::Persistence(format!("create memory directory: {error}")))?;
+            fs::create_dir_all(parent).map_err(|error| {
+                CoreError::Persistence(format!("create memory directory: {error}"))
+            })?;
         }
         let temp = self.path.with_extension("tmp");
         let bytes = serde_json::to_vec_pretty(records)?;
@@ -88,7 +89,9 @@ impl JsonDecisionMemory {
 
 impl DecisionMemory for JsonDecisionMemory {
     fn store_decision(&self, record: DecisionRecord) -> Result<(), CoreError> {
-        let _guard = self.lock.lock()
+        let _guard = self
+            .lock
+            .lock()
             .map_err(|_| CoreError::Persistence("decision memory lock poisoned".into()))?;
         let mut records = self.load_records()?;
         if records.iter().any(|existing| {
@@ -101,7 +104,9 @@ impl DecisionMemory for JsonDecisionMemory {
     }
 
     fn pending(&self) -> Result<Vec<DecisionRecord>, CoreError> {
-        let _guard = self.lock.lock()
+        let _guard = self
+            .lock
+            .lock()
             .map_err(|_| CoreError::Persistence("decision memory lock poisoned".into()))?;
         Ok(self
             .load_records()?
@@ -116,7 +121,9 @@ impl DecisionMemory for JsonDecisionMemory {
         trade_date: NaiveDate,
         outcome: SettlementOutcome,
     ) -> Result<bool, CoreError> {
-        let _guard = self.lock.lock()
+        let _guard = self
+            .lock
+            .lock()
             .map_err(|_| CoreError::Persistence("decision memory lock poisoned".into()))?;
         let mut records = self.load_records()?;
         let Some(record) = records.iter_mut().find(|record| {
@@ -130,7 +137,9 @@ impl DecisionMemory for JsonDecisionMemory {
     }
 
     fn context_as_of(&self, ticker: &str, as_of: Option<NaiveDate>) -> Result<String, CoreError> {
-        let _guard = self.lock.lock()
+        let _guard = self
+            .lock
+            .lock()
             .map_err(|_| CoreError::Persistence("decision memory lock poisoned".into()))?;
         let mut resolved = self
             .load_records()?

@@ -24,8 +24,8 @@ impl PortfolioContext {
         normalized
             .positions
             .sort_by(|a, b| a.symbol.as_str().cmp(b.symbol.as_str()));
-        let bytes = serde_json::to_vec(&normalized)
-            .expect("portfolio context is always JSON serializable");
+        let bytes =
+            serde_json::to_vec(&normalized).expect("portfolio context is always JSON serializable");
         format!("{:x}", Sha256::digest(bytes))
     }
 

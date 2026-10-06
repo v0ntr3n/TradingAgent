@@ -12,9 +12,26 @@ use crate::{
 };
 
 const INDICATORS: &[&str] = &[
-    "ema", "ichimoku", "supertrend", "donchianchannels", "macd", "rsi", "stochrsi",
-    "trix", "stc", "vwap", "atr", "bbands", "keltnerchannels", "chop", "engulfing",
-    "hammer", "morningstar", "eveningstar", "3whitesoldiers", "3blackcrows",
+    "ema",
+    "ichimoku",
+    "supertrend",
+    "donchianchannels",
+    "macd",
+    "rsi",
+    "stochrsi",
+    "trix",
+    "stc",
+    "vwap",
+    "atr",
+    "bbands",
+    "keltnerchannels",
+    "chop",
+    "engulfing",
+    "hammer",
+    "morningstar",
+    "eveningstar",
+    "3whitesoldiers",
+    "3blackcrows",
 ];
 
 pub struct TaapiClient {
@@ -47,7 +64,8 @@ impl TaapiClient {
         request: &DataRequest,
         interval: &str,
     ) -> Result<DataStatus<TechnicalIndicators>, DataError> {
-        if let Some(withheld) = historical_withheld("taapi-live", request, self.now, self.timezone) {
+        if let Some(withheld) = historical_withheld("taapi-live", request, self.now, self.timezone)
+        {
             return Ok(withheld);
         }
         let pair = taapi_symbol(&request.symbol);

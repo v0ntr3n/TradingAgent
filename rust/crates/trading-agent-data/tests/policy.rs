@@ -1,8 +1,6 @@
 use chrono::{TimeZone, Utc};
 use chrono_tz::{Asia::Bangkok, UTC};
-use trading_agent_data::{
-    DataAccess, DataPolicy, DataStatus, SourceAvailability, VendorRouter,
-};
+use trading_agent_data::{DataAccess, DataPolicy, DataStatus, SourceAvailability, VendorRouter};
 
 #[test]
 fn current_only_data_is_allowed_for_the_runtime_local_date() {

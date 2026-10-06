@@ -1,9 +1,12 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use thiserror::Error;
 use trading_agent_core::{
     events::RunEvent,
-    workflow::{RunResult, FinalRating},
+    workflow::{FinalRating, RunResult},
 };
 
 #[derive(Debug, Error)]
@@ -36,7 +39,9 @@ impl ReportWriter {
                     serde_json::to_string_pretty(metadata)?.as_bytes(),
                 )?;
             }
-            RunEvent::SectionCompleted { section, content, .. } => {
+            RunEvent::SectionCompleted {
+                section, content, ..
+            } => {
                 validate_section(section)?;
                 let mut body = content.clone();
                 if !body.ends_with('\n') {
@@ -94,7 +99,11 @@ fn render_markdown(result: &RunResult) -> String {
     push_section(&mut out, "Market", state.market_report.as_deref());
     push_section(&mut out, "Sentiment", state.sentiment_report.as_deref());
     push_section(&mut out, "News", state.news_report.as_deref());
-    push_section(&mut out, "Fundamentals", state.fundamentals_report.as_deref());
+    push_section(
+        &mut out,
+        "Fundamentals",
+        state.fundamentals_report.as_deref(),
+    );
     push_section(&mut out, "Research", state.research_plan.as_deref());
     push_section(&mut out, "Trader", state.trader_plan.as_deref());
     push_section(&mut out, "Final Decision", state.final_decision.as_deref());
@@ -133,7 +142,10 @@ fn escape_html(value: &str) -> String {
 }
 
 impl trading_agent_core::events::EventSink for ReportWriter {
-    fn emit(&self, event: &trading_agent_core::events::RunEvent) -> Result<(), trading_agent_core::CoreError> {
+    fn emit(
+        &self,
+        event: &trading_agent_core::events::RunEvent,
+    ) -> Result<(), trading_agent_core::CoreError> {
         self.write_event(event)
             .map_err(|error| trading_agent_core::CoreError::Persistence(error.to_string()))
     }

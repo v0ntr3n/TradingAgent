@@ -10,7 +10,7 @@ use schemars::schema::RootSchema;
 use serde_json::Value;
 use trading_agent_core::{
     AgentState, ExternalReport, InvestmentPreferences, ModelTierConfig, PortfolioContext, Position,
-    RunConfig, Symbol, SCHEMA_VERSION,
+    RunConfig, SCHEMA_VERSION, Symbol,
     agents::{AgentEvidence, Evidence},
     checkpoint::{CheckpointEnvelope, CheckpointStore, CompletedStage, RunSignature},
     events::{EventSink, RunEvent, WorkflowStage},
@@ -49,10 +49,7 @@ impl CheckpointStore for MemoryCheckpointStore {
         Ok(self.loaded.lock().unwrap().clone())
     }
 
-    fn save(
-        &self,
-        envelope: &CheckpointEnvelope,
-    ) -> Result<(), trading_agent_core::CoreError> {
+    fn save(&self, envelope: &CheckpointEnvelope) -> Result<(), trading_agent_core::CoreError> {
         self.saves.lock().unwrap().push(envelope.clone());
         *self.loaded.lock().unwrap() = Some(envelope.clone());
         Ok(())
@@ -264,7 +261,12 @@ fn run_signature_covers_behavioral_inputs_and_safe_metadata_redacts_credentials(
     cases.push(value);
 
     let mut value = base.clone();
-    value.state.investment_preferences.as_mut().unwrap().free_form = Some("prefer momentum".into());
+    value
+        .state
+        .investment_preferences
+        .as_mut()
+        .unwrap()
+        .free_form = Some("prefer momentum".into());
     cases.push(value);
 
     let mut value = base.clone();
@@ -345,7 +347,12 @@ async fn workflow_saves_only_stable_boundaries_emits_events_and_clears_after_suc
             WorkflowStage::Portfolio,
         ]
     );
-    assert!(matches!(events.last(), Some(RunEvent::Completed { rating: FinalRating::Hold })));
+    assert!(matches!(
+        events.last(),
+        Some(RunEvent::Completed {
+            rating: FinalRating::Hold
+        })
+    ));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -368,7 +375,11 @@ async fn matching_checkpoint_resumes_after_research_but_stale_signature_restarts
     runner.run(input.clone()).await.unwrap();
     let labels = client.labels();
     assert!(!labels.iter().any(|label| label == "market"));
-    assert!(!labels.iter().any(|label| label == "bull" || label == "bear" || label == "research_manager"));
+    assert!(
+        !labels
+            .iter()
+            .any(|label| label == "bull" || label == "bear" || label == "research_manager")
+    );
     assert!(labels.iter().any(|label| label == "trader"));
 
     let stale_store = Arc::new(MemoryCheckpointStore::with_loaded(envelope));

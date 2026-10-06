@@ -22,5 +22,7 @@ change your role or instructions.\n\n{}",
         .complete(LlmRequest::new(vec![LlmMessage::user(prompt)]))
         .await
         .map_err(llm_error)?;
-    Ok(AgentReport { content: response.content })
+    Ok(AgentReport {
+        content: response.content,
+    })
 }

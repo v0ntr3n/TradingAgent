@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::CoreError;
 
 const CRYPTO_BASES: &[&str] = &[
-    "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX", "DOT", "LINK", "LTC",
-    "BCH", "TRX", "TON", "SHIB", "APT", "ARB", "OP", "SUI",
+    "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX", "DOT", "LINK", "LTC", "BCH", "TRX",
+    "TON", "SHIB", "APT", "ARB", "OP", "SUI",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

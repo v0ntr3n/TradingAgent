@@ -13,7 +13,10 @@ use trading_agent_core::{
 };
 use trading_agent_data::{
     DataRequest, DataStatus, MarketDataSource, ReqwestTransport, SentimentSource,
-    crypto::{AlternativeMeClient, BinanceClient, BlockBeatsClient, CoinDeskClient, CoinStatsClient, TaapiClient},
+    crypto::{
+        AlternativeMeClient, BinanceClient, BlockBeatsClient, CoinDeskClient, CoinStatsClient,
+        TaapiClient,
+    },
     general::{PolymarketProvider, YahooProvider},
 };
 use trading_agent_llm::{
@@ -53,7 +56,10 @@ pub fn build_run_input(args: &CliArgs, resolved: &ResolvedCliConfig) -> Result<R
     for path in &args.external_reports {
         let content = read_text(path, "external report")?;
         state.external_reports.push(ExternalReport {
-            title: path.file_name().and_then(|value| value.to_str()).map(str::to_owned),
+            title: path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .map(str::to_owned),
             source: Some(path.display().to_string()),
             content,
         });
@@ -61,8 +67,9 @@ pub fn build_run_input(args: &CliArgs, resolved: &ResolvedCliConfig) -> Result<R
 
     if let Some(path) = &args.portfolio {
         let text = read_text(path, "portfolio")?;
-        let parsed: PortfolioFile = serde_json::from_str(&text)
-            .map_err(|error| CliError::Config(format!("parse portfolio {}: {error}", path.display())))?;
+        let parsed: PortfolioFile = serde_json::from_str(&text).map_err(|error| {
+            CliError::Config(format!("parse portfolio {}: {error}", path.display()))
+        })?;
         let mut positions = Vec::with_capacity(parsed.positions.len());
         for position in parsed.positions {
             positions.push(Position {
@@ -82,10 +89,22 @@ pub fn build_run_input(args: &CliArgs, resolved: &ResolvedCliConfig) -> Result<R
     Ok(RunInput {
         state,
         evidence: AgentEvidence {
-            market: Evidence::Unavailable { source: "cli".into(), reason: "market evidence not collected yet".into() },
-            sentiment: Evidence::Unavailable { source: "cli".into(), reason: "sentiment evidence not collected yet".into() },
-            news: Evidence::Unavailable { source: "cli".into(), reason: "news evidence not collected yet".into() },
-            fundamentals: Evidence::Unavailable { source: "cli".into(), reason: "fundamentals evidence not collected yet".into() },
+            market: Evidence::Unavailable {
+                source: "cli".into(),
+                reason: "market evidence not collected yet".into(),
+            },
+            sentiment: Evidence::Unavailable {
+                source: "cli".into(),
+                reason: "sentiment evidence not collected yet".into(),
+            },
+            news: Evidence::Unavailable {
+                source: "cli".into(),
+                reason: "news evidence not collected yet".into(),
+            },
+            fundamentals: Evidence::Unavailable {
+                source: "cli".into(),
+                reason: "fundamentals evidence not collected yet".into(),
+            },
         },
         config: resolved.run.clone(),
     })
@@ -97,9 +116,11 @@ pub async fn run_from_args(args: CliArgs, env: &dyn EnvSource) -> Result<RunResu
 
     let llm_transport = Arc::new(ReqwestLlmTransport::new());
     let registry = ProviderRegistry::new(llm_transport);
-    let quick = registry.create(&provider_config(&resolved.run.quick))
+    let quick = registry
+        .create(&provider_config(&resolved.run.quick))
         .map_err(|error| CliError::Runtime(error.to_string()))?;
-    let deep = registry.create(&provider_config(&resolved.run.deep))
+    let deep = registry
+        .create(&provider_config(&resolved.run.deep))
         .map_err(|error| CliError::Runtime(error.to_string()))?;
 
     input.evidence = collect_evidence(&resolved, env, quick.clone()).await;
@@ -108,8 +129,9 @@ pub async fn run_from_args(args: CliArgs, env: &dyn EnvSource) -> Result<RunResu
         .results_dir
         .join(input.state.symbol.as_str())
         .join(resolved.trade_date.format("%Y-%m-%d").to_string());
-    let writer = Arc::new(ReportWriter::new(&report_root)
-        .map_err(|error| CliError::Runtime(error.to_string()))?);
+    let writer = Arc::new(
+        ReportWriter::new(&report_root).map_err(|error| CliError::Runtime(error.to_string()))?,
+    );
 
     let memory = Arc::new(JsonDecisionMemory::new(&resolved.memory_path));
     let mut runner = WorkflowRunner::new(quick, deep)
@@ -120,9 +142,12 @@ pub async fn run_from_args(args: CliArgs, env: &dyn EnvSource) -> Result<RunResu
         runner = runner.with_checkpoint_store(Arc::new(JsonCheckpointStore::new(path)));
     }
 
-    let result = runner.run(input).await
+    let result = runner
+        .run(input)
+        .await
         .map_err(|error| CliError::Runtime(error.to_string()))?;
-    writer.write_complete(&result)
+    writer
+        .write_complete(&result)
         .map_err(|error| CliError::Runtime(error.to_string()))?;
     Ok(result)
 }
@@ -159,35 +184,59 @@ async fn collect_evidence(
             Err(error) => unavailable("binance", error.to_string()),
         };
         let market = if let Some(key) = env.get("TAAPI_API_KEY") {
-            let taapi = TaapiClient::new(http.clone(), &resolved.data_endpoints.taapi, key, now, UTC);
+            let taapi =
+                TaapiClient::new(http.clone(), &resolved.data_endpoints.taapi, key, now, UTC);
             match taapi.indicators(&request, "15m").await {
-                Ok(status) => combine_evidence("crypto-market", vec![market, technical_evidence(status)]),
-                Err(error) => combine_evidence("crypto-market", vec![market, unavailable("taapi", error.to_string())]),
+                Ok(status) => {
+                    combine_evidence("crypto-market", vec![market, technical_evidence(status)])
+                }
+                Err(error) => combine_evidence(
+                    "crypto-market",
+                    vec![market, unavailable("taapi", error.to_string())],
+                ),
             }
         } else {
             market
         };
 
-        let sentiment_client = AlternativeMeClient::new(http.clone(), &resolved.data_endpoints.alternative_me, now, UTC);
+        let sentiment_client = AlternativeMeClient::new(
+            http.clone(),
+            &resolved.data_endpoints.alternative_me,
+            now,
+            UTC,
+        );
         let sentiment = match sentiment_client.sentiment(&request).await {
             Ok(status) => sentiment_evidence(status),
             Err(error) => unavailable("alternative_me", error.to_string()),
         };
 
-        let blockbeats = BlockBeatsClient::new(http.clone(), &resolved.data_endpoints.blockbeats, now, UTC);
+        let blockbeats =
+            BlockBeatsClient::new(http.clone(), &resolved.data_endpoints.blockbeats, now, UTC);
         let mut news_parts = vec![match blockbeats.news(&request, 10).await {
             Ok(status) => news_evidence(status),
             Err(error) => unavailable("blockbeats", error.to_string()),
         }];
         if let Some(key) = env.get("COINDESK_API_KEY") {
-            let client = CoinDeskClient::new(http.clone(), &resolved.data_endpoints.coindesk, key, now, UTC);
+            let client = CoinDeskClient::new(
+                http.clone(),
+                &resolved.data_endpoints.coindesk,
+                key,
+                now,
+                UTC,
+            );
             news_parts.push(match client.news(&request, 10).await {
                 Ok(status) => news_evidence(status),
                 Err(error) => unavailable("coindesk", error.to_string()),
             });
         }
         if let Some(key) = env.get("COINSTATS_API_KEY") {
-            let client = CoinStatsClient::new(http.clone(), &resolved.data_endpoints.coinstats, key.clone(), now, UTC);
+            let client = CoinStatsClient::new(
+                http.clone(),
+                &resolved.data_endpoints.coinstats,
+                key.clone(),
+                now,
+                UTC,
+            );
             news_parts.push(match client.news(&request, 10).await {
                 Ok(status) => news_evidence(status),
                 Err(error) => unavailable("coinstats", error.to_string()),
@@ -197,7 +246,13 @@ async fn collect_evidence(
 
         let mut fundamental_parts = Vec::new();
         if let Some(key) = env.get("COINSTATS_API_KEY") {
-            let client = CoinStatsClient::new(http.clone(), &resolved.data_endpoints.coinstats, key, now, UTC);
+            let client = CoinStatsClient::new(
+                http.clone(),
+                &resolved.data_endpoints.coinstats,
+                key,
+                now,
+                UTC,
+            );
             fundamental_parts.push(match client.btc_dominance(&request).await {
                 Ok(status) => fundamentals_evidence(status),
                 Err(error) => unavailable("coinstats", error.to_string()),
@@ -215,7 +270,12 @@ async fn collect_evidence(
         ).await);
         let fundamentals = combine_evidence("crypto-fundamentals", fundamental_parts);
 
-        AgentEvidence { market, sentiment, news, fundamentals }
+        AgentEvidence {
+            market,
+            sentiment,
+            news,
+            fundamentals,
+        }
     } else {
         let market = if resolved.trade_date == today {
             let yahoo = YahooProvider::new(http.clone(), &resolved.data_endpoints.yahoo);
@@ -224,26 +284,37 @@ async fn collect_evidence(
                 Err(error) => unavailable("yahoo", error.to_string()),
             }
         } else {
-            Evidence::WithheldHistorical { source: "stock-live-market".into(), as_of: resolved.trade_date }
+            Evidence::WithheldHistorical {
+                source: "stock-live-market".into(),
+                as_of: resolved.trade_date,
+            }
         };
 
         let sentiment = if resolved.trade_date == today {
-            let polymarket = PolymarketProvider::new(http, &resolved.data_endpoints.polymarket, today);
+            let polymarket =
+                PolymarketProvider::new(http, &resolved.data_endpoints.polymarket, today);
             match polymarket.sentiment(&request).await {
                 Ok(status) => sentiment_evidence(status),
                 Err(error) => unavailable("polymarket", error.to_string()),
             }
         } else {
-            Evidence::WithheldHistorical { source: "stock-live-sentiment".into(), as_of: resolved.trade_date }
+            Evidence::WithheldHistorical {
+                source: "stock-live-sentiment".into(),
+                as_of: resolved.trade_date,
+            }
         };
 
         let news = search_evidence(
             quick.clone(),
             today,
             resolved.trade_date,
-            format!("Research material news about {} relevant to an investment decision.", resolved.symbol),
+            format!(
+                "Research material news about {} relevant to an investment decision.",
+                resolved.symbol
+            ),
             "search-news",
-        ).await;
+        )
+        .await;
         let fundamentals = search_evidence(
             quick,
             today,
@@ -252,7 +323,12 @@ async fn collect_evidence(
             "search-fundamentals",
         ).await;
 
-        AgentEvidence { market, sentiment, news, fundamentals }
+        AgentEvidence {
+            market,
+            sentiment,
+            news,
+            fundamentals,
+        }
     }
 }
 
@@ -267,14 +343,20 @@ async fn search_evidence(
     match research.research(ResearchRequest { query, as_of }).await {
         Ok(response) => Evidence::Available(response.content),
         Err(trading_agent_llm::LlmError::HistoricalSearchRefused { .. }) => {
-            Evidence::WithheldHistorical { source: source.into(), as_of }
+            Evidence::WithheldHistorical {
+                source: source.into(),
+                as_of,
+            }
         }
         Err(error) => unavailable(source, error.to_string()),
     }
 }
 
 fn unavailable(source: &str, reason: String) -> Evidence {
-    Evidence::Unavailable { source: source.into(), reason }
+    Evidence::Unavailable {
+        source: source.into(),
+        reason,
+    }
 }
 
 fn combine_evidence(source: &str, parts: Vec<Evidence>) -> Evidence {
@@ -285,17 +367,25 @@ fn combine_evidence(source: &str, parts: Vec<Evidence>) -> Evidence {
         match part {
             Evidence::Available(content) => available.push(content),
             Evidence::WithheldHistorical { as_of, .. } => withheld = Some(as_of),
-            Evidence::Unavailable { source, reason } => unavailable_parts.push(format!("{source}: {reason}")),
+            Evidence::Unavailable { source, reason } => {
+                unavailable_parts.push(format!("{source}: {reason}"))
+            }
         }
     }
     if !available.is_empty() {
         if !unavailable_parts.is_empty() {
-            available.push(format!("Unavailable supplemental sources: {}", unavailable_parts.join("; ")));
+            available.push(format!(
+                "Unavailable supplemental sources: {}",
+                unavailable_parts.join("; ")
+            ));
         }
         return Evidence::Available(available.join("\n\n"));
     }
     if let Some(as_of) = withheld {
-        return Evidence::WithheldHistorical { source: source.into(), as_of };
+        return Evidence::WithheldHistorical {
+            source: source.into(),
+            as_of,
+        };
     }
     unavailable(source, unavailable_parts.join("; "))
 }
@@ -304,7 +394,9 @@ fn market_evidence(status: DataStatus<trading_agent_data::MarketSnapshot>) -> Ev
     match status {
         DataStatus::Available(value) => Evidence::Available(value.summary),
         DataStatus::Unavailable { source, reason } => Evidence::Unavailable { source, reason },
-        DataStatus::WithheldHistorical { source, as_of } => Evidence::WithheldHistorical { source, as_of },
+        DataStatus::WithheldHistorical { source, as_of } => {
+            Evidence::WithheldHistorical { source, as_of }
+        }
     }
 }
 
@@ -312,7 +404,9 @@ fn technical_evidence(status: DataStatus<trading_agent_data::TechnicalIndicators
     match status {
         DataStatus::Available(value) => Evidence::Available(value.summary),
         DataStatus::Unavailable { source, reason } => Evidence::Unavailable { source, reason },
-        DataStatus::WithheldHistorical { source, as_of } => Evidence::WithheldHistorical { source, as_of },
+        DataStatus::WithheldHistorical { source, as_of } => {
+            Evidence::WithheldHistorical { source, as_of }
+        }
     }
 }
 
@@ -320,7 +414,9 @@ fn sentiment_evidence(status: DataStatus<trading_agent_data::SentimentSnapshot>)
     match status {
         DataStatus::Available(value) => Evidence::Available(value.summary),
         DataStatus::Unavailable { source, reason } => Evidence::Unavailable { source, reason },
-        DataStatus::WithheldHistorical { source, as_of } => Evidence::WithheldHistorical { source, as_of },
+        DataStatus::WithheldHistorical { source, as_of } => {
+            Evidence::WithheldHistorical { source, as_of }
+        }
     }
 }
 
@@ -328,7 +424,9 @@ fn news_evidence(status: DataStatus<trading_agent_data::NewsBatch>) -> Evidence 
     match status {
         DataStatus::Available(value) => Evidence::Available(value.items.join("\n")),
         DataStatus::Unavailable { source, reason } => Evidence::Unavailable { source, reason },
-        DataStatus::WithheldHistorical { source, as_of } => Evidence::WithheldHistorical { source, as_of },
+        DataStatus::WithheldHistorical { source, as_of } => {
+            Evidence::WithheldHistorical { source, as_of }
+        }
     }
 }
 
@@ -336,7 +434,9 @@ fn fundamentals_evidence(status: DataStatus<trading_agent_data::FundamentalsSnap
     match status {
         DataStatus::Available(value) => Evidence::Available(value.summary),
         DataStatus::Unavailable { source, reason } => Evidence::Unavailable { source, reason },
-        DataStatus::WithheldHistorical { source, as_of } => Evidence::WithheldHistorical { source, as_of },
+        DataStatus::WithheldHistorical { source, as_of } => {
+            Evidence::WithheldHistorical { source, as_of }
+        }
     }
 }
 

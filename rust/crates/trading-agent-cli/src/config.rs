@@ -35,21 +35,29 @@ pub struct DataEndpoints {
 impl DataEndpoints {
     fn resolve(env: &dyn EnvSource) -> Self {
         Self {
-            binance: env.get("TRADINGAGENTS_BINANCE_BASE_URL")
+            binance: env
+                .get("TRADINGAGENTS_BINANCE_BASE_URL")
                 .unwrap_or_else(|| "https://fapi.binance.com".into()),
-            taapi: env.get("TRADINGAGENTS_TAAPI_BASE_URL")
+            taapi: env
+                .get("TRADINGAGENTS_TAAPI_BASE_URL")
                 .unwrap_or_else(|| "https://api.taapi.io".into()),
-            alternative_me: env.get("TRADINGAGENTS_ALTERNATIVE_ME_BASE_URL")
+            alternative_me: env
+                .get("TRADINGAGENTS_ALTERNATIVE_ME_BASE_URL")
                 .unwrap_or_else(|| "https://api.alternative.me".into()),
-            blockbeats: env.get("TRADINGAGENTS_BLOCKBEATS_BASE_URL")
+            blockbeats: env
+                .get("TRADINGAGENTS_BLOCKBEATS_BASE_URL")
                 .unwrap_or_else(|| "https://api.theblockbeats.news".into()),
-            coindesk: env.get("TRADINGAGENTS_COINDESK_BASE_URL")
+            coindesk: env
+                .get("TRADINGAGENTS_COINDESK_BASE_URL")
                 .unwrap_or_else(|| "https://data-api.coindesk.com".into()),
-            coinstats: env.get("TRADINGAGENTS_COINSTATS_BASE_URL")
+            coinstats: env
+                .get("TRADINGAGENTS_COINSTATS_BASE_URL")
                 .unwrap_or_else(|| "https://openapiv1.coinstats.app".into()),
-            yahoo: env.get("TRADINGAGENTS_YAHOO_BASE_URL")
+            yahoo: env
+                .get("TRADINGAGENTS_YAHOO_BASE_URL")
                 .unwrap_or_else(|| "https://query1.finance.yahoo.com".into()),
-            polymarket: env.get("TRADINGAGENTS_POLYMARKET_BASE_URL")
+            polymarket: env
+                .get("TRADINGAGENTS_POLYMARKET_BASE_URL")
                 .unwrap_or_else(|| "https://gamma-api.polymarket.com".into()),
         }
     }
@@ -117,23 +125,31 @@ struct FileConfig {
 }
 
 pub fn resolve_config(args: &CliArgs, env: &dyn EnvSource) -> Result<ResolvedCliConfig, CliError> {
-    let symbol = Symbol::parse(&args.symbol).map_err(|error| CliError::Config(error.to_string()))?;
+    let symbol =
+        Symbol::parse(&args.symbol).map_err(|error| CliError::Config(error.to_string()))?;
     let trade_date = NaiveDate::parse_from_str(&args.date, "%Y-%m-%d")
         .map_err(|_| CliError::Config(format!("date must be YYYY-MM-DD, got {:?}", args.date)))?;
     if trade_date.format("%Y-%m-%d").to_string() != args.date {
-        return Err(CliError::Config(format!("date must be canonical YYYY-MM-DD, got {:?}", args.date)));
+        return Err(CliError::Config(format!(
+            "date must be canonical YYYY-MM-DD, got {:?}",
+            args.date
+        )));
     }
     let today = Utc::now().date_naive();
     if trade_date > today {
-        return Err(CliError::Config(format!("date cannot be in the future: {trade_date}")));
+        return Err(CliError::Config(format!(
+            "date cannot be in the future: {trade_date}"
+        )));
     }
 
     let file = match &args.config {
         Some(path) => {
-            let text = fs::read_to_string(path)
-                .map_err(|error| CliError::Io(format!("read config {}: {error}", path.display())))?;
-            serde_json::from_str::<FileConfig>(&text)
-                .map_err(|error| CliError::Config(format!("parse config {}: {error}", path.display())))?
+            let text = fs::read_to_string(path).map_err(|error| {
+                CliError::Io(format!("read config {}: {error}", path.display()))
+            })?;
+            serde_json::from_str::<FileConfig>(&text).map_err(|error| {
+                CliError::Config(format!("parse config {}: {error}", path.display()))
+            })?
         }
         None => FileConfig::default(),
     };
@@ -188,7 +204,12 @@ pub fn resolve_config(args: &CliArgs, env: &dyn EnvSource) -> Result<ResolvedCli
     } else if let Some(value) = file.analysts {
         value
     } else {
-        vec!["market".into(), "sentiment".into(), "news".into(), "fundamentals".into()]
+        vec![
+            "market".into(),
+            "sentiment".into(),
+            "news".into(),
+            "fundamentals".into(),
+        ]
     };
     validate_analysts(&analysts)?;
 
@@ -207,14 +228,20 @@ pub fn resolve_config(args: &CliArgs, env: &dyn EnvSource) -> Result<ResolvedCli
         "TRADINGAGENTS_MAX_RISK_ROUNDS",
     )?;
 
-    let results_dir = args.results_dir.clone()
+    let results_dir = args
+        .results_dir
+        .clone()
         .or_else(|| env.get("TRADINGAGENTS_RESULTS_DIR").map(PathBuf::from))
         .or(file.results_dir)
         .unwrap_or_else(|| PathBuf::from("results"));
-    let checkpoint_path = args.checkpoint.clone()
+    let checkpoint_path = args
+        .checkpoint
+        .clone()
         .or_else(|| env.get("TRADINGAGENTS_CHECKPOINT_PATH").map(PathBuf::from))
         .or(file.checkpoint_path);
-    let memory_path = args.memory.clone()
+    let memory_path = args
+        .memory
+        .clone()
         .or_else(|| env.get("TRADINGAGENTS_MEMORY_LOG_PATH").map(PathBuf::from))
         .or(file.memory_path)
         .unwrap_or_else(|| results_dir.join("memory.json"));
@@ -250,7 +277,12 @@ pub fn resolve_config(args: &CliArgs, env: &dyn EnvSource) -> Result<ResolvedCli
     })
 }
 
-fn choose(cli: Option<String>, env: Option<String>, file: Option<String>, default: String) -> String {
+fn choose(
+    cli: Option<String>,
+    env: Option<String>,
+    file: Option<String>,
+    default: String,
+) -> String {
     cli.or(env).or(file).unwrap_or(default)
 }
 
@@ -269,14 +301,19 @@ fn choose_u32(
         return Ok(value);
     }
     if let Some(raw) = env {
-        return raw.parse::<u32>()
+        return raw
+            .parse::<u32>()
             .map_err(|_| CliError::Config(format!("{env_name} must be a non-negative integer")));
     }
     Ok(file.unwrap_or(default))
 }
 
 fn split_list(raw: &str) -> Vec<String> {
-    raw.split(',').map(str::trim).filter(|value| !value.is_empty()).map(str::to_owned).collect()
+    raw.split(',')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned)
+        .collect()
 }
 
 fn validate_analysts(analysts: &[String]) -> Result<(), CliError> {
@@ -284,7 +321,10 @@ fn validate_analysts(analysts: &[String]) -> Result<(), CliError> {
         return Err(CliError::Config("at least one analyst is required".into()));
     }
     for analyst in analysts {
-        if !matches!(analyst.trim().to_ascii_lowercase().as_str(), "market" | "sentiment" | "news" | "fundamentals") {
+        if !matches!(
+            analyst.trim().to_ascii_lowercase().as_str(),
+            "market" | "sentiment" | "news" | "fundamentals"
+        ) {
             return Err(CliError::Config(format!("unsupported analyst: {analyst}")));
         }
     }

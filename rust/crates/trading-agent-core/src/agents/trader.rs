@@ -1,7 +1,7 @@
 use trading_agent_llm::{LlmClient, LlmMessage, LlmRequest};
 
-use crate::TraderProposal;
 use super::{AgentContext, common_context, llm_error};
+use crate::TraderProposal;
 
 pub async fn run_trader(
     client: &dyn LlmClient,

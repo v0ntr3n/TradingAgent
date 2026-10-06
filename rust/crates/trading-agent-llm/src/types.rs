@@ -64,7 +64,14 @@ fn redact_url(raw: &str) -> String {
                 || lowered.contains("password")
                 || lowered == "sig"
                 || lowered == "signature";
-            (key_string, if sensitive { "<redacted>".into() } else { value_string })
+            (
+                key_string,
+                if sensitive {
+                    "<redacted>".into()
+                } else {
+                    value_string
+                },
+            )
         })
         .collect();
     url.set_query(None);
@@ -90,15 +97,24 @@ pub struct LlmMessage {
 
 impl LlmMessage {
     pub fn system(content: impl Into<String>) -> Self {
-        Self { role: LlmRole::System, content: content.into() }
+        Self {
+            role: LlmRole::System,
+            content: content.into(),
+        }
     }
 
     pub fn user(content: impl Into<String>) -> Self {
-        Self { role: LlmRole::User, content: content.into() }
+        Self {
+            role: LlmRole::User,
+            content: content.into(),
+        }
     }
 
     pub fn assistant(content: impl Into<String>) -> Self {
-        Self { role: LlmRole::Assistant, content: content.into() }
+        Self {
+            role: LlmRole::Assistant,
+            content: content.into(),
+        }
     }
 }
 
@@ -112,7 +128,12 @@ pub struct LlmRequest {
 
 impl LlmRequest {
     pub fn new(messages: Vec<LlmMessage>) -> Self {
-        Self { messages, enable_search: false, temperature: None, max_tokens: None }
+        Self {
+            messages,
+            enable_search: false,
+            temperature: None,
+            max_tokens: None,
+        }
     }
 }
 

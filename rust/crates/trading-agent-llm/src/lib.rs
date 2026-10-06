@@ -1,11 +1,11 @@
 //! Provider-neutral LLM contracts for the native Rust port.
 
 mod client;
+pub mod providers;
 mod registry;
 mod research;
 mod structured;
 mod types;
-pub mod providers;
 
 pub use client::{LlmClient, LlmTransport, ReqwestLlmTransport};
 pub use registry::ProviderRegistry;

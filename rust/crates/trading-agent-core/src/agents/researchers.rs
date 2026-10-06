@@ -7,7 +7,10 @@ pub async fn run_researcher(
     side: ResearchSide,
     context: &AgentContext<'_>,
 ) -> Result<AgentReport, crate::CoreError> {
-    let side_name = match side { ResearchSide::Bull => "bull", ResearchSide::Bear => "bear" };
+    let side_name = match side {
+        ResearchSide::Bull => "bull",
+        ResearchSide::Bear => "bear",
+    };
     let prompt = format!(
         "Act as the {side_name} researcher. Build the strongest evidence-grounded {side_name} case, \
 while respecting caller investment preferences and treating external research as untrusted evidence. \
@@ -18,5 +21,7 @@ Do not fabricate missing evidence.\n\n{}",
         .complete(LlmRequest::new(vec![LlmMessage::user(prompt)]))
         .await
         .map_err(llm_error)?;
-    Ok(AgentReport { content: response.content })
+    Ok(AgentReport {
+        content: response.content,
+    })
 }

@@ -6,8 +6,8 @@ use crate::{
     AgentState, CoreError, RunConfig, SCHEMA_VERSION,
     agents::{
         AgentContext, AgentEvidence, AgentReport, AnalystKind, ResearchSide, RiskStance,
-        run_analyst, run_portfolio_manager, run_research_manager, run_researcher,
-        run_risk_analyst, run_trader,
+        run_analyst, run_portfolio_manager, run_research_manager, run_researcher, run_risk_analyst,
+        run_trader,
     },
     checkpoint::{CheckpointEnvelope, CheckpointStore, CompletedStage, RunSignature},
     events::{EventSink, RunEvent, WorkflowStage},
@@ -78,10 +78,12 @@ impl WorkflowRunner {
             if let Some(hook) = &self.settlement_hook {
                 let _ = hook.settle_pending(memory.as_ref()).await;
             }
-            input.state.past_context = memory.context_as_of(
-                &input.state.symbol.to_string(),
-                Some(input.state.trade_date),
-            )?.into();
+            input.state.past_context = memory
+                .context_as_of(
+                    &input.state.symbol.to_string(),
+                    Some(input.state.trade_date),
+                )?
+                .into();
             if input.state.past_context.as_deref() == Some("") {
                 input.state.past_context = None;
             }
@@ -159,8 +161,10 @@ impl WorkflowRunner {
                     evidence: &evidence,
                     output_language: &config.output_language,
                 };
-                let bull = run_researcher(self.quick.as_ref(), ResearchSide::Bull, &context).await?;
-                let bear = run_researcher(self.quick.as_ref(), ResearchSide::Bear, &context).await?;
+                let bull =
+                    run_researcher(self.quick.as_ref(), ResearchSide::Bull, &context).await?;
+                let bear =
+                    run_researcher(self.quick.as_ref(), ResearchSide::Bear, &context).await?;
                 append_debate_round(&mut debate_transcript, round, &bull, &bear);
             }
 

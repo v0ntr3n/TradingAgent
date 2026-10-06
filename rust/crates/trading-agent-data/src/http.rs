@@ -77,11 +77,7 @@ impl ReqwestTransport {
 #[async_trait]
 impl HttpTransport for ReqwestTransport {
     async fn execute(&self, request: HttpRequest) -> Result<Value, DataError> {
-        let url = format!(
-            "{}{}",
-            request.base_url.trim_end_matches('/'),
-            request.path
-        );
+        let url = format!("{}{}", request.base_url.trim_end_matches('/'), request.path);
         let mut builder = match request.method {
             HttpMethod::Get => self.client.get(&url),
             HttpMethod::Post => self.client.post(&url),
@@ -111,9 +107,12 @@ impl HttpTransport for ReqwestTransport {
                 message: format!("HTTP status {status}"),
             });
         }
-        response.json::<Value>().await.map_err(|_| DataError::Vendor {
-            vendor: "http".into(),
-            message: "response was not valid JSON".into(),
-        })
+        response
+            .json::<Value>()
+            .await
+            .map_err(|_| DataError::Vendor {
+                vendor: "http".into(),
+                message: "response was not valid JSON".into(),
+            })
     }
 }

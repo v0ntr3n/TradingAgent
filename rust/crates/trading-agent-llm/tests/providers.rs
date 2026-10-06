@@ -81,7 +81,9 @@ fn registry_selects_native_and_openai_compatible_provider_families() {
 fn quick_and_deep_tiers_can_use_different_provider_families() {
     let registry = ProviderRegistry::new(Arc::new(RecordingTransport::openai_ok("ok")));
     let quick = registry.create(&config("qwen", "qwen-turbo")).unwrap();
-    let deep = registry.create(&config("anthropic", "claude-sonnet")).unwrap();
+    let deep = registry
+        .create(&config("anthropic", "claude-sonnet"))
+        .unwrap();
     assert_eq!(quick.provider_id(), "openai_compatible");
     assert_eq!(deep.provider_id(), "anthropic");
 }
@@ -106,9 +108,16 @@ async fn openai_compatible_propagates_endpoint_sampling_limits_retries_and_auth(
 
     let requests = inspect.requests.lock().unwrap();
     let sent = &requests[0];
-    assert_eq!(sent.url, "https://dashscope.example/compatible-mode/v1/chat/completions");
+    assert_eq!(
+        sent.url,
+        "https://dashscope.example/compatible-mode/v1/chat/completions"
+    );
     assert_eq!(sent.max_retries, 5);
-    assert!(sent.headers.iter().any(|(k, v)| k.eq_ignore_ascii_case("authorization") && v == "Bearer top-secret"));
+    assert!(
+        sent.headers
+            .iter()
+            .any(|(k, v)| k.eq_ignore_ascii_case("authorization") && v == "Bearer top-secret")
+    );
     assert_eq!(sent.body["model"], "qwen-plus");
     assert_eq!(sent.body["temperature"], 0.35);
     assert_eq!(sent.body["max_tokens"], 4096);
@@ -127,7 +136,9 @@ struct JsonClient {
 
 #[async_trait]
 impl LlmClient for JsonClient {
-    fn provider_id(&self) -> &str { "test" }
+    fn provider_id(&self) -> &str {
+        "test"
+    }
 
     async fn complete(&self, _request: LlmRequest) -> Result<LlmResponse, LlmError> {
         Err(LlmError::Transport("not used".into()))
@@ -145,11 +156,21 @@ impl LlmClient for JsonClient {
 #[tokio::test]
 async fn structured_completion_deserializes_valid_shape_and_rejects_invalid_shape() {
     let request = LlmRequest::new(vec![LlmMessage::user("decide")]);
-    let valid = JsonClient { value: json!({"action":"buy","confidence":87}) };
+    let valid = JsonClient {
+        value: json!({"action":"buy","confidence":87}),
+    };
     let decision: StructuredDecision = complete_structured(&valid, request.clone()).await.unwrap();
-    assert_eq!(decision, StructuredDecision { action: "buy".into(), confidence: 87 });
+    assert_eq!(
+        decision,
+        StructuredDecision {
+            action: "buy".into(),
+            confidence: 87
+        }
+    );
 
-    let invalid = JsonClient { value: json!({"action":"buy","confidence":"high"}) };
+    let invalid = JsonClient {
+        value: json!({"action":"buy","confidence":"high"}),
+    };
     assert!(matches!(
         complete_structured::<StructuredDecision>(&invalid, request).await,
         Err(LlmError::Structured(_))
@@ -162,10 +183,7 @@ async fn search_research_refuses_historical_queries_before_calling_the_llm() {
     let inspect = transport.clone();
     let registry = ProviderRegistry::new(Arc::new(transport));
     let client = registry.create(&config("qwen", "qwen-plus")).unwrap();
-    let research = SearchResearchClient::new(
-        client,
-        NaiveDate::from_ymd_opt(2026, 10, 6).unwrap(),
-    );
+    let research = SearchResearchClient::new(client, NaiveDate::from_ymd_opt(2026, 10, 6).unwrap());
 
     let error = research
         .research(ResearchRequest {
@@ -181,9 +199,8 @@ async fn search_research_refuses_historical_queries_before_calling_the_llm() {
 #[test]
 fn safe_provider_display_redacts_keys_url_credentials_and_sensitive_query_values() {
     let mut cfg = config("openai_compatible", "model-x");
-    cfg.base_url = Some(
-        "https://alice:password@llm.example/v1?api_key=endpoint-secret&region=us".into(),
-    );
+    cfg.base_url =
+        Some("https://alice:password@llm.example/v1?api_key=endpoint-secret&region=us".into());
     cfg.api_key = Some("top-secret".into());
 
     let safe = cfg.safe_display();

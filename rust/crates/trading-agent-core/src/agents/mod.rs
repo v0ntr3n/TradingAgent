@@ -28,9 +28,9 @@ impl Evidence {
             Self::Unavailable { source, reason } => {
                 format!("EVIDENCE STATUS: UNAVAILABLE\nsource: {source}\nreason: {reason}")
             }
-            Self::WithheldHistorical { source, as_of } => format!(
-                "EVIDENCE STATUS: WITHHELD_HISTORICAL\nsource: {source}\nas_of: {as_of}"
-            ),
+            Self::WithheldHistorical { source, as_of } => {
+                format!("EVIDENCE STATUS: WITHHELD_HISTORICAL\nsource: {source}\nas_of: {as_of}")
+            }
         }
     }
 }

@@ -1,12 +1,15 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
     thread,
     time::Duration,
 };
 
-use clap::Parser;
 use chrono::{Days, Utc};
+use clap::Parser;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tempfile::TempDir;
@@ -72,22 +75,30 @@ impl FixtureServer {
 
         let join = thread::spawn(move || {
             while !stop_thread.load(Ordering::SeqCst) {
-                let Some(mut request) = server.recv_timeout(Duration::from_millis(50)).unwrap() else {
+                let Some(mut request) = server.recv_timeout(Duration::from_millis(50)).unwrap()
+                else {
                     continue;
                 };
                 let url = request.url().to_string();
                 let mut body = String::new();
                 request.as_reader().read_to_string(&mut body).unwrap();
                 let (payload, label) = route(&url, &body);
-                records_thread.lock().unwrap().push(RequestRecord { url, label });
-                let response = Response::from_string(payload.to_string()).with_header(
-                    Header::from_bytes("content-type", "application/json").unwrap(),
-                );
+                records_thread
+                    .lock()
+                    .unwrap()
+                    .push(RequestRecord { url, label });
+                let response = Response::from_string(payload.to_string())
+                    .with_header(Header::from_bytes("content-type", "application/json").unwrap());
                 request.respond(response).unwrap();
             }
         });
 
-        Self { base_url, records, stop, join: Some(join) }
+        Self {
+            base_url,
+            records,
+            stop,
+            join: Some(join),
+        }
     }
 
     pub fn base(&self, prefix: &str) -> String {
@@ -112,12 +123,16 @@ fn route(url: &str, body: &str) -> (Value, Option<String>) {
     if url.contains("/chat/completions") {
         let value: Value = serde_json::from_str(body).unwrap_or_else(|_| json!({}));
         let label = classify_llm(&value);
-        let prompt = value.get("messages")
+        let prompt = value
+            .get("messages")
             .and_then(Value::as_array)
-            .map(|messages| messages.iter()
-                .filter_map(|message| message.get("content").and_then(Value::as_str))
-                .collect::<Vec<_>>()
-                .join("\n"))
+            .map(|messages| {
+                messages
+                    .iter()
+                    .filter_map(|message| message.get("content").and_then(Value::as_str))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
             .unwrap_or_default();
         let content = match label.as_str() {
             "trader" => r#"{"action":"buy","reasoning":"fixture trader","entry_price":"100","support":"95","resistance":"120","take_profit":"115","stop_loss":"90","position_sizing":{"description":"fixture","percent_of_portfolio":"5"}}"#.to_string(),
@@ -133,11 +148,17 @@ fn route(url: &str, body: &str) -> (Value, Option<String>) {
             }
             other => format!("{other} fixture output"),
         };
-        return (json!({"choices":[{"message":{"content":content}}]}), Some(label));
+        return (
+            json!({"choices":[{"message":{"content":content}}]}),
+            Some(label),
+        );
     }
 
     let payload = if url.starts_with("/binance/fapi/v1/klines") {
-        json!([[1,"100","110","90","105","10"],[2,"105","115","100","110","12"]])
+        json!([
+            [1, "100", "110", "90", "105", "10"],
+            [2, "105", "115", "100", "110", "12"]
+        ])
     } else if url.starts_with("/binance/fapi/v1/depth") {
         json!({"bids":[["109","1"]],"asks":[["110","1"]]})
     } else if url.starts_with("/binance/fapi/v1/ticker/24hr") {
@@ -176,12 +197,16 @@ fn classify_llm(value: &Value) -> String {
     if value.get("enable_search").and_then(Value::as_bool) == Some(true) {
         return "search".into();
     }
-    let prompt = value.get("messages")
+    let prompt = value
+        .get("messages")
         .and_then(Value::as_array)
-        .map(|messages| messages.iter()
-            .filter_map(|message| message.get("content").and_then(Value::as_str))
-            .collect::<Vec<_>>()
-            .join("\n"))
+        .map(|messages| {
+            messages
+                .iter()
+                .filter_map(|message| message.get("content").and_then(Value::as_str))
+                .collect::<Vec<_>>()
+                .join("\n")
+        })
         .unwrap_or_default();
 
     for (needle, label) in [
@@ -217,12 +242,24 @@ pub async fn run_fixture(fixture: &ParityFixture) -> (RunResult, Vec<RequestReco
         .set("COINSTATS_API_KEY", "fixture-coinstats")
         .set("TRADINGAGENTS_BINANCE_BASE_URL", server.base("/binance"))
         .set("TRADINGAGENTS_TAAPI_BASE_URL", server.base("/taapi"))
-        .set("TRADINGAGENTS_ALTERNATIVE_ME_BASE_URL", server.base("/alternative"))
-        .set("TRADINGAGENTS_BLOCKBEATS_BASE_URL", server.base("/blockbeats"))
+        .set(
+            "TRADINGAGENTS_ALTERNATIVE_ME_BASE_URL",
+            server.base("/alternative"),
+        )
+        .set(
+            "TRADINGAGENTS_BLOCKBEATS_BASE_URL",
+            server.base("/blockbeats"),
+        )
         .set("TRADINGAGENTS_COINDESK_BASE_URL", server.base("/coindesk"))
-        .set("TRADINGAGENTS_COINSTATS_BASE_URL", server.base("/coinstats"))
+        .set(
+            "TRADINGAGENTS_COINSTATS_BASE_URL",
+            server.base("/coinstats"),
+        )
         .set("TRADINGAGENTS_YAHOO_BASE_URL", server.base("/yahoo"))
-        .set("TRADINGAGENTS_POLYMARKET_BASE_URL", server.base("/polymarket"));
+        .set(
+            "TRADINGAGENTS_POLYMARKET_BASE_URL",
+            server.base("/polymarket"),
+        );
 
     let today = Utc::now().date_naive();
     let run_date = match fixture.date.as_str() {
@@ -252,7 +289,8 @@ pub async fn run_fixture(fixture: &ParityFixture) -> (RunResult, Vec<RequestReco
         server.base("/deep/v1"),
         "--results-dir".into(),
         temp.path().display().to_string(),
-    ]).unwrap();
+    ])
+    .unwrap();
 
     let resolved = resolve_config(&args, &env).unwrap();
     assert_eq!(resolved.data_endpoints.binance, server.base("/binance"));
@@ -267,7 +305,10 @@ pub fn assert_fixture(fixture: &ParityFixture, result: &RunResult, records: &[Re
         AssetType::Crypto => "crypto",
     };
     assert_eq!(asset, fixture.expected_asset_type, "{}", fixture.name);
-    assert_eq!(format!("{:?}", result.rating).to_ascii_lowercase(), fixture.expected_rating);
+    assert_eq!(
+        format!("{:?}", result.rating).to_ascii_lowercase(),
+        fixture.expected_rating
+    );
 
     for report in &fixture.expected_reports {
         let present = match report.as_str() {
@@ -279,7 +320,8 @@ pub fn assert_fixture(fixture: &ParityFixture, result: &RunResult, records: &[Re
         };
         let text = present.unwrap_or_else(|| panic!("missing {report} report"));
         assert!(
-            text.to_ascii_lowercase().contains(&fixture.report_status_contains),
+            text.to_ascii_lowercase()
+                .contains(&fixture.report_status_contains),
             "{} report status mismatch: {}",
             report,
             text,
@@ -294,13 +336,17 @@ pub fn assert_fixture(fixture: &ParityFixture, result: &RunResult, records: &[Re
     assert_eq!(proposal.stop_loss.unwrap().to_string(), "90");
 
     for path in &fixture.expected_vendor_paths {
-        assert!(records.iter().any(|record| record.url.starts_with(path)), "missing fixture vendor call {path}");
+        assert!(
+            records.iter().any(|record| record.url.starts_with(path)),
+            "missing fixture vendor call {path}"
+        );
     }
     if fixture.expected_vendor_paths.is_empty() {
         assert!(records.iter().all(|record| record.url.starts_with("/quick/") || record.url.starts_with("/deep/")));
     }
 
-    let mut quick = records.iter()
+    let mut quick = records
+        .iter()
         .filter(|record| record.url.starts_with("/quick/"))
         .filter_map(|record| record.label.clone())
         .collect::<Vec<_>>();
@@ -309,7 +355,8 @@ pub fn assert_fixture(fixture: &ParityFixture, result: &RunResult, records: &[Re
     expected_quick.sort();
     assert_eq!(quick, expected_quick, "quick-tier routing mismatch");
 
-    let mut deep = records.iter()
+    let mut deep = records
+        .iter()
         .filter(|record| record.url.starts_with("/deep/"))
         .filter_map(|record| record.label.clone())
         .collect::<Vec<_>>();
@@ -319,12 +366,20 @@ pub fn assert_fixture(fixture: &ParityFixture, result: &RunResult, records: &[Re
     assert_eq!(deep, expected_deep, "deep-tier routing mismatch");
 
     assert_eq!(
-        records.iter().filter(|record| record.label.as_deref() == Some("search")).count(),
+        records
+            .iter()
+            .filter(|record| record.label.as_deref() == Some("search"))
+            .count(),
         fixture.expected_search_calls,
     );
 
     if fixture.expected_asset_type == "crypto" {
-        assert!(fixture.approved_extensions.iter().any(|item| item == "crypto_fundamentals"));
+        assert!(
+            fixture
+                .approved_extensions
+                .iter()
+                .any(|item| item == "crypto_fundamentals")
+        );
         assert!(result.state.fundamentals_report.is_some());
     }
 }

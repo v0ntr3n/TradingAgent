@@ -2,15 +2,15 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use chrono::NaiveDate;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use trading_agent_core::Symbol;
 use trading_agent_data::{
+    DataError, DataRequest, DataStatus, FundamentalsSource, HttpRequest, HttpTransport,
+    MacroSource, MarketDataSource, SentimentSource,
     general::{
         AlphaVantageProvider, FredProvider, PolymarketProvider, SecEdgarProvider, SocialProvider,
         YahooProvider,
     },
-    DataError, DataRequest, DataStatus, FundamentalsSource, HttpRequest, HttpTransport, MacroSource,
-    MarketDataSource, SentimentSource,
 };
 
 #[derive(Clone)]
@@ -66,7 +66,10 @@ async fn yahoo_rejects_stale_daily_market_data() {
         }]}
     }));
     let provider = YahooProvider::new(Arc::new(transport), "https://query1.finance.yahoo.com");
-    let status = provider.market_snapshot(&request("AAPL", "2026-11-10")).await.unwrap();
+    let status = provider
+        .market_snapshot(&request("AAPL", "2026-11-10"))
+        .await
+        .unwrap();
     assert!(matches!(status, DataStatus::Unavailable { reason, .. } if reason.contains("stale")));
 }
 
@@ -79,8 +82,13 @@ async fn sec_edgar_excludes_filings_not_known_by_as_of_date() {
         ]
     }));
     let provider = SecEdgarProvider::new(Arc::new(transport), "https://data.sec.gov");
-    let status = provider.fundamentals(&request("AAPL", "2026-02-01")).await.unwrap();
-    let DataStatus::Available(snapshot) = status else { panic!("expected available fundamentals") };
+    let status = provider
+        .fundamentals(&request("AAPL", "2026-02-01"))
+        .await
+        .unwrap();
+    let DataStatus::Available(snapshot) = status else {
+        panic!("expected available fundamentals")
+    };
     assert!(snapshot.summary.contains("known filing"));
     assert!(!snapshot.summary.contains("future filing"));
 }
@@ -93,8 +101,13 @@ async fn alpha_vantage_api_errors_remain_typed_vendor_failures() {
         "https://www.alphavantage.co",
         "secret-key",
     );
-    let error = provider.market_snapshot(&request("AAPL", "2026-10-06")).await.unwrap_err();
-    assert!(matches!(error, DataError::Vendor { vendor, message } if vendor == "alpha_vantage" && message.contains("Invalid API call")));
+    let error = provider
+        .market_snapshot(&request("AAPL", "2026-10-06"))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(error, DataError::Vendor { vendor, message } if vendor == "alpha_vantage" && message.contains("Invalid API call"))
+    );
 }
 
 #[tokio::test]
@@ -103,11 +116,23 @@ async fn fred_macro_request_is_bounded_by_as_of_date() {
         "observations": [{"date": "2026-09-01", "value": "4.25"}]
     }));
     let inspect = transport.clone();
-    let provider = FredProvider::new(Arc::new(transport), "https://api.stlouisfed.org", "fred-key");
-    let status = provider.macro_snapshot(&request("AAPL", "2026-10-06")).await.unwrap();
+    let provider = FredProvider::new(
+        Arc::new(transport),
+        "https://api.stlouisfed.org",
+        "fred-key",
+    );
+    let status = provider
+        .macro_snapshot(&request("AAPL", "2026-10-06"))
+        .await
+        .unwrap();
     assert!(matches!(status, DataStatus::Available(_)));
     let requests = inspect.requests.lock().unwrap();
-    assert!(requests[0].query.iter().any(|(k, v)| k == "observation_end" && v == "2026-10-06"));
+    assert!(
+        requests[0]
+            .query
+            .iter()
+            .any(|(k, v)| k == "observation_end" && v == "2026-10-06")
+    );
 }
 
 #[tokio::test]
@@ -119,7 +144,10 @@ async fn current_only_polymarket_is_withheld_before_http_for_historical_runs() {
         "https://gamma-api.polymarket.com",
         NaiveDate::from_ymd_opt(2026, 10, 6).unwrap(),
     );
-    let status = provider.sentiment(&request("AAPL", "2026-10-05")).await.unwrap();
+    let status = provider
+        .sentiment(&request("AAPL", "2026-10-05"))
+        .await
+        .unwrap();
     assert!(matches!(status, DataStatus::WithheldHistorical { .. }));
     assert_eq!(inspect.request_count(), 0);
 }
@@ -132,6 +160,11 @@ async fn social_transport_failure_degrades_to_unavailable_context() {
         "https://social.example",
         NaiveDate::from_ymd_opt(2026, 10, 6).unwrap(),
     );
-    let status = provider.sentiment(&request("AAPL", "2026-10-06")).await.unwrap();
-    assert!(matches!(status, DataStatus::Unavailable { source, reason } if source == "social" && reason.contains("unavailable")));
+    let status = provider
+        .sentiment(&request("AAPL", "2026-10-06"))
+        .await
+        .unwrap();
+    assert!(
+        matches!(status, DataStatus::Unavailable { source, reason } if source == "social" && reason.contains("unavailable"))
+    );
 }

@@ -26,10 +26,17 @@ struct BacktestClient {
 
 #[async_trait]
 impl LlmClient for BacktestClient {
-    fn provider_id(&self) -> &str { "backtest-test" }
+    fn provider_id(&self) -> &str {
+        "backtest-test"
+    }
 
     async fn complete(&self, request: LlmRequest) -> Result<LlmResponse, LlmError> {
-        let prompt = request.messages.iter().map(|m| m.content.as_str()).collect::<Vec<_>>().join("\n");
+        let prompt = request
+            .messages
+            .iter()
+            .map(|m| m.content.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
         self.prompts.lock().unwrap().push(prompt.clone());
         let content = if prompt.contains("Act as the trader") {
             r#"{"action":"hold","reasoning":"fixture","entry_price":null,"support":null,"resistance":null,"take_profit":null,"stop_loss":null,"position_sizing":null}"#.into()
@@ -50,7 +57,11 @@ impl LlmClient for BacktestClient {
         Ok(LlmResponse { content })
     }
 
-    async fn complete_json(&self, _request: LlmRequest, _schema: &RootSchema) -> Result<Value, LlmError> {
+    async fn complete_json(
+        &self,
+        _request: LlmRequest,
+        _schema: &RootSchema,
+    ) -> Result<Value, LlmError> {
         Err(LlmError::Transport("unused".into()))
     }
 }
@@ -62,17 +73,29 @@ struct FixtureSource {
 }
 
 impl FixtureSource {
-    fn calls(&self) -> Vec<String> { self.calls.lock().unwrap().clone() }
+    fn calls(&self) -> Vec<String> {
+        self.calls.lock().unwrap().clone()
+    }
 }
 
 #[async_trait]
 impl BacktestDataSource for FixtureSource {
-    async fn run_input(&self, symbol: &Symbol, as_of: NaiveDate) -> Result<BacktestInput, trading_agent_core::CoreError> {
+    async fn run_input(
+        &self,
+        symbol: &Symbol,
+        as_of: NaiveDate,
+    ) -> Result<BacktestInput, trading_agent_core::CoreError> {
         self.calls.lock().unwrap().push(format!("input:{as_of}"));
         if as_of == day(2) {
-            return Ok(BacktestInput::Unavailable { reason: "market holiday fixture".into() });
+            return Ok(BacktestInput::Unavailable {
+                reason: "market holiday fixture".into(),
+            });
         }
-        let actual_date = if self.wrong_date { as_of.succ_opt().unwrap() } else { as_of };
+        let actual_date = if self.wrong_date {
+            as_of.succ_opt().unwrap()
+        } else {
+            as_of
+        };
         let mut state = AgentState::new(symbol.clone(), actual_date);
         state.portfolio = Some(PortfolioContext {
             cash: Some(Decimal::new(10_000, 0)),
@@ -111,7 +134,10 @@ impl BacktestDataSource for FixtureSource {
         holding_days: u32,
         benchmark: &Symbol,
     ) -> Result<Option<BacktestPriceWindow>, trading_agent_core::CoreError> {
-        self.calls.lock().unwrap().push(format!("price:{as_of}:{holding_days}:{benchmark}"));
+        self.calls
+            .lock()
+            .unwrap()
+            .push(format!("price:{as_of}:{holding_days}:{benchmark}"));
         let (exit, benchmark_exit) = match as_of.day() {
             1 => (Decimal::new(110, 0), Decimal::new(105, 0)),
             3 => (Decimal::new(90, 0), Decimal::new(102, 0)),
@@ -122,7 +148,9 @@ impl BacktestDataSource for FixtureSource {
             exit_price: exit,
             benchmark_entry_price: Decimal::new(100, 0),
             benchmark_exit_price: benchmark_exit,
-            resolution_date: as_of.checked_add_days(chrono::Days::new(holding_days as u64)).unwrap(),
+            resolution_date: as_of
+                .checked_add_days(chrono::Days::new(holding_days as u64))
+                .unwrap(),
         }))
     }
 }
@@ -139,19 +167,42 @@ fn request(dates: Vec<NaiveDate>) -> BacktestRequest {
 }
 
 #[tokio::test]
-async fn dates_are_sorted_deduplicated_unavailable_days_are_isolated_and_portfolio_is_not_carried() {
+async fn dates_are_sorted_deduplicated_unavailable_days_are_isolated_and_portfolio_is_not_carried()
+{
     let client = Arc::new(BacktestClient::default());
     let workflow = Arc::new(WorkflowRunner::new(client.clone(), client));
     let source = Arc::new(FixtureSource::default());
     let runner = BacktestRunner::new(workflow, source.clone());
 
-    let result = runner.run(request(vec![day(3), day(1), day(2), day(1), day(4)])).await.unwrap();
+    let result = runner
+        .run(request(vec![day(3), day(1), day(2), day(1), day(4)]))
+        .await
+        .unwrap();
 
-    assert_eq!(result.cells.iter().map(|c| c.date).collect::<Vec<_>>(), vec![day(1), day(2), day(3), day(4)]);
-    assert!(result.cells[1].unavailable_reason.as_deref().unwrap().contains("holiday"));
+    assert_eq!(
+        result.cells.iter().map(|c| c.date).collect::<Vec<_>>(),
+        vec![day(1), day(2), day(3), day(4)]
+    );
+    assert!(
+        result.cells[1]
+            .unavailable_reason
+            .as_deref()
+            .unwrap()
+            .contains("holiday")
+    );
     assert!(result.cells[1].result.is_none());
     for cell in result.cells.iter().filter(|cell| cell.result.is_some()) {
-        assert_eq!(cell.result.as_ref().unwrap().state.portfolio.as_ref().unwrap().cash, Some(Decimal::new(10_000, 0)));
+        assert_eq!(
+            cell.result
+                .as_ref()
+                .unwrap()
+                .state
+                .portfolio
+                .as_ref()
+                .unwrap()
+                .cash,
+            Some(Decimal::new(10_000, 0))
+        );
     }
     assert_eq!(
         source.calls(),
@@ -171,7 +222,10 @@ async fn dates_are_sorted_deduplicated_unavailable_days_are_isolated_and_portfol
 async fn source_cannot_smuggle_future_state_into_a_historical_cell() {
     let client = Arc::new(BacktestClient::default());
     let workflow = Arc::new(WorkflowRunner::new(client.clone(), client.clone()));
-    let source = Arc::new(FixtureSource { calls: Mutex::new(Vec::new()), wrong_date: true });
+    let source = Arc::new(FixtureSource {
+        calls: Mutex::new(Vec::new()),
+        wrong_date: true,
+    });
     let runner = BacktestRunner::new(workflow, source);
 
     let error = runner.run(request(vec![day(1)])).await.unwrap_err();
@@ -186,7 +240,10 @@ async fn benchmark_alpha_and_summary_metrics_are_explicit_and_deterministic() {
     let source = Arc::new(FixtureSource::default());
     let runner = BacktestRunner::new(workflow, source);
 
-    let result = runner.run(request(vec![day(1), day(3), day(4)])).await.unwrap();
+    let result = runner
+        .run(request(vec![day(1), day(3), day(4)]))
+        .await
+        .unwrap();
 
     let first = result.cells[0].outcome.as_ref().unwrap();
     assert_eq!(first.raw_return, Decimal::new(10, 2));
@@ -212,10 +269,20 @@ async fn missing_outcome_window_is_pending_not_fabricated() {
     struct PendingSource(FixtureSource);
     #[async_trait]
     impl BacktestDataSource for PendingSource {
-        async fn run_input(&self, symbol: &Symbol, as_of: NaiveDate) -> Result<BacktestInput, trading_agent_core::CoreError> {
+        async fn run_input(
+            &self,
+            symbol: &Symbol,
+            as_of: NaiveDate,
+        ) -> Result<BacktestInput, trading_agent_core::CoreError> {
             self.0.run_input(symbol, as_of).await
         }
-        async fn price_window(&self, _symbol: &Symbol, _as_of: NaiveDate, _holding_days: u32, _benchmark: &Symbol) -> Result<Option<BacktestPriceWindow>, trading_agent_core::CoreError> {
+        async fn price_window(
+            &self,
+            _symbol: &Symbol,
+            _as_of: NaiveDate,
+            _holding_days: u32,
+            _benchmark: &Symbol,
+        ) -> Result<Option<BacktestPriceWindow>, trading_agent_core::CoreError> {
             Ok(None)
         }
     }

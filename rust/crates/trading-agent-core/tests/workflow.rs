@@ -88,7 +88,10 @@ impl LlmClient for InstrumentedClient {
         let label = classify_prompt(&prompt).to_string();
         self.labels.lock().unwrap().push(label.clone());
 
-        if matches!(label.as_str(), "market" | "sentiment" | "news" | "fundamentals") {
+        if matches!(
+            label.as_str(),
+            "market" | "sentiment" | "news" | "fundamentals"
+        ) {
             let active = self.active_analysts.fetch_add(1, Ordering::SeqCst) + 1;
             self.max_active_analysts.fetch_max(active, Ordering::SeqCst);
             std::thread::sleep(std::time::Duration::from_millis(20));
@@ -168,17 +171,41 @@ async fn analysts_run_concurrently_and_only_selected_analysts_execute() {
     let client = Arc::new(InstrumentedClient::new("**Rating**: Hold"));
     let runner = WorkflowRunner::new(client.clone(), client.clone());
 
-    let result = runner
-        .run(input(&["market", "news"], 0, 0))
-        .await
-        .unwrap();
+    let result = runner.run(input(&["market", "news"], 0, 0)).await.unwrap();
 
-    assert!(client.max_active_analysts() >= 2, "selected analysts did not overlap");
+    assert!(
+        client.max_active_analysts() >= 2,
+        "selected analysts did not overlap"
+    );
     let labels = client.labels();
-    assert_eq!(labels.iter().filter(|label| label.as_str() == "market").count(), 1);
-    assert_eq!(labels.iter().filter(|label| label.as_str() == "news").count(), 1);
-    assert_eq!(labels.iter().filter(|label| label.as_str() == "sentiment").count(), 0);
-    assert_eq!(labels.iter().filter(|label| label.as_str() == "fundamentals").count(), 0);
+    assert_eq!(
+        labels
+            .iter()
+            .filter(|label| label.as_str() == "market")
+            .count(),
+        1
+    );
+    assert_eq!(
+        labels
+            .iter()
+            .filter(|label| label.as_str() == "news")
+            .count(),
+        1
+    );
+    assert_eq!(
+        labels
+            .iter()
+            .filter(|label| label.as_str() == "sentiment")
+            .count(),
+        0
+    );
+    assert_eq!(
+        labels
+            .iter()
+            .filter(|label| label.as_str() == "fundamentals")
+            .count(),
+        0
+    );
     assert_eq!(result.state.market_report.as_deref(), Some("market report"));
     assert_eq!(result.state.news_report.as_deref(), Some("news report"));
     assert!(result.state.sentiment_report.is_none());
@@ -200,9 +227,27 @@ async fn debate_rounds_risk_order_and_crypto_fundamentals_are_deterministic() {
         .unwrap();
 
     let labels = client.labels();
-    assert_eq!(labels.iter().filter(|label| label.as_str() == "bull").count(), 2);
-    assert_eq!(labels.iter().filter(|label| label.as_str() == "bear").count(), 2);
-    assert_eq!(labels.iter().filter(|label| label.as_str() == "fundamentals").count(), 1);
+    assert_eq!(
+        labels
+            .iter()
+            .filter(|label| label.as_str() == "bull")
+            .count(),
+        2
+    );
+    assert_eq!(
+        labels
+            .iter()
+            .filter(|label| label.as_str() == "bear")
+            .count(),
+        2
+    );
+    assert_eq!(
+        labels
+            .iter()
+            .filter(|label| label.as_str() == "fundamentals")
+            .count(),
+        1
+    );
 
     let risk_order = labels
         .iter()
@@ -221,7 +266,10 @@ async fn debate_rounds_risk_order_and_crypto_fundamentals_are_deterministic() {
         ]
     );
     assert_eq!(result.rating, FinalRating::Overweight);
-    assert_eq!(result.state.fundamentals_report.as_deref(), Some("fundamentals report"));
+    assert_eq!(
+        result.state.fundamentals_report.as_deref(),
+        Some("fundamentals report")
+    );
     assert!(result.state.trader_proposal.is_some());
 }
 

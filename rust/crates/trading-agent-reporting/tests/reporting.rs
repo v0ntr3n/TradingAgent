@@ -66,7 +66,10 @@ fn report_writer_persists_safe_metadata_incremental_sections_and_self_contained_
         .unwrap();
     let metadata_text = fs::read_to_string(temp.path().join("run_metadata.json")).unwrap();
     for secret in ["query-secret", "header-secret", "user:pass"] {
-        assert!(!metadata_text.contains(secret), "persisted metadata leaked {secret}");
+        assert!(
+            !metadata_text.contains(secret),
+            "persisted metadata leaked {secret}"
+        );
     }
     assert!(metadata_text.contains("<redacted>"));
 

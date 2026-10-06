@@ -28,7 +28,10 @@ pub struct SearchResearchClient {
 
 impl SearchResearchClient {
     pub fn new(client: Arc<dyn LlmClient>, current_date: NaiveDate) -> Self {
-        Self { client, current_date }
+        Self {
+            client,
+            current_date,
+        }
     }
 }
 
@@ -36,11 +39,15 @@ impl SearchResearchClient {
 impl ResearchClient for SearchResearchClient {
     async fn research(&self, request: ResearchRequest) -> Result<ResearchResponse, LlmError> {
         if request.as_of < self.current_date {
-            return Err(LlmError::HistoricalSearchRefused { as_of: request.as_of });
+            return Err(LlmError::HistoricalSearchRefused {
+                as_of: request.as_of,
+            });
         }
         let mut llm_request = LlmRequest::new(vec![LlmMessage::user(request.query)]);
         llm_request.enable_search = true;
         let response = self.client.complete(llm_request).await?;
-        Ok(ResearchResponse { content: response.content })
+        Ok(ResearchResponse {
+            content: response.content,
+        })
     }
 }

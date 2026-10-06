@@ -1,15 +1,14 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use url::Url;
 
-use crate::{
-    AgentState, CoreError, SCHEMA_VERSION,
-    agents::Evidence,
-    workflow::RunInput,
-};
+use crate::{AgentState, CoreError, SCHEMA_VERSION, agents::Evidence, workflow::RunInput};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RunSignature(pub String);
@@ -137,7 +136,14 @@ fn redact_url(raw: &str) -> String {
                 || lowered.contains("password")
                 || lowered == "sig"
                 || lowered == "signature";
-            (key, if sensitive { "redacted".to_string() } else { value.into_owned() })
+            (
+                key,
+                if sensitive {
+                    "redacted".to_string()
+                } else {
+                    value.into_owned()
+                },
+            )
         })
         .collect::<Vec<_>>();
     url.set_query(None);
@@ -175,7 +181,9 @@ pub struct JsonCheckpointStore {
 
 impl JsonCheckpointStore {
     pub fn new(path: impl AsRef<Path>) -> Self {
-        Self { path: path.as_ref().to_path_buf() }
+        Self {
+            path: path.as_ref().to_path_buf(),
+        }
     }
 }
 
@@ -192,8 +200,9 @@ impl CheckpointStore for JsonCheckpointStore {
 
     fn save(&self, envelope: &CheckpointEnvelope) -> Result<(), CoreError> {
         if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|error| CoreError::Persistence(format!("create checkpoint directory: {error}")))?;
+            fs::create_dir_all(parent).map_err(|error| {
+                CoreError::Persistence(format!("create checkpoint directory: {error}"))
+            })?;
         }
         let bytes = serde_json::to_vec_pretty(envelope)?;
         let temp_path = self.path.with_extension("tmp");

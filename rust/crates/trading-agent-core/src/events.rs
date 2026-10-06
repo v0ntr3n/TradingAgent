@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{CoreError, workflow::FinalRating};
 use crate::checkpoint::RunSignature;
+use crate::{CoreError, workflow::FinalRating};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorkflowStage {

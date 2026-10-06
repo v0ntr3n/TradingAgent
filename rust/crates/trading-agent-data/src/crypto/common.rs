@@ -5,7 +5,10 @@ use trading_agent_core::Symbol;
 use crate::{DataAccess, DataPolicy, DataRequest, DataStatus, SourceAvailability};
 
 pub fn crypto_base(symbol: &Symbol) -> &str {
-    symbol.as_str().strip_suffix("-USD").unwrap_or(symbol.as_str())
+    symbol
+        .as_str()
+        .strip_suffix("-USD")
+        .unwrap_or(symbol.as_str())
 }
 
 pub fn binance_symbol(symbol: &Symbol) -> String {

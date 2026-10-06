@@ -15,7 +15,9 @@ pub struct ReqwestLlmTransport {
 }
 
 impl ReqwestLlmTransport {
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 #[async_trait]
@@ -30,9 +32,10 @@ impl LlmTransport for ReqwestLlmTransport {
             }
             match builder.send().await {
                 Ok(response) if response.status().is_success() => {
-                    return response.json::<Value>().await.map_err(|_| {
-                        LlmError::Transport("provider returned invalid JSON".into())
-                    });
+                    return response
+                        .json::<Value>()
+                        .await
+                        .map_err(|_| LlmError::Transport("provider returned invalid JSON".into()));
                 }
                 Ok(response) => {
                     last_error = Some(format!("provider returned HTTP {}", response.status()));

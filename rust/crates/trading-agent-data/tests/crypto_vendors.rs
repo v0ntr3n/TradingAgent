@@ -83,7 +83,7 @@ fn crypto_vendor_symbols_use_expected_quotes() {
 #[tokio::test]
 async fn binance_requests_all_futures_microstructure_endpoints() {
     let transport = MockTransport::with_responses([
-        json!([[1_791_264_600_000i64,"100","110","90","105","12"]]),
+        json!([[1_791_264_600_000i64, "100", "110", "90", "105", "12"]]),
         json!({"bids":[["104","2"]],"asks":[["106","3"]]}),
         json!({"lastPrice":"105","priceChangePercent":"2.5","highPrice":"111","lowPrice":"89","quoteVolume":"123456"}),
         json!([{"timestamp":1_791_264_600_000i64,"longShortRatio":"1.2"}]),
@@ -91,15 +91,15 @@ async fn binance_requests_all_futures_microstructure_endpoints() {
         json!([{"timestamp":1_791_264_600_000i64,"longShortRatio":"1.1"}]),
         json!([{"timestamp":1_791_264_600_000i64,"buySellRatio":"1.4"}]),
     ]);
-    let client = BinanceClient::new(
-        transport.clone(),
-        "https://binance.test",
-        now(),
-        Bangkok,
-    );
+    let client = BinanceClient::new(transport.clone(), "https://binance.test", now(), Bangkok);
 
-    let result = client.market_snapshot(&request("BTC-USD", 2026, 10, 6), "15m").await.unwrap();
-    let DataStatus::Available(snapshot) = result else { panic!("expected live snapshot") };
+    let result = client
+        .market_snapshot(&request("BTC-USD", 2026, 10, 6), "15m")
+        .await
+        .unwrap();
+    let DataStatus::Available(snapshot) = result else {
+        panic!("expected live snapshot")
+    };
     assert!(snapshot.summary.contains("Last: 105"));
     assert!(snapshot.summary.contains("Best bid: 104"));
     assert!(snapshot.summary.contains("1.4"));
@@ -107,16 +107,23 @@ async fn binance_requests_all_futures_microstructure_endpoints() {
     let requests = transport.requests();
     assert_eq!(requests.len(), 7);
     let paths: Vec<_> = requests.iter().map(|r| r.path.as_str()).collect();
-    assert_eq!(paths, [
-        "/fapi/v1/klines",
-        "/fapi/v1/depth",
-        "/fapi/v1/ticker/24hr",
-        "/futures/data/topLongShortPositionRatio",
-        "/futures/data/topLongShortAccountRatio",
-        "/futures/data/globalLongShortAccountRatio",
-        "/futures/data/takerlongshortRatio",
-    ]);
-    assert!(requests.iter().all(|r| query(r, "symbol") == Some("BTCUSDT")));
+    assert_eq!(
+        paths,
+        [
+            "/fapi/v1/klines",
+            "/fapi/v1/depth",
+            "/fapi/v1/ticker/24hr",
+            "/futures/data/topLongShortPositionRatio",
+            "/futures/data/topLongShortAccountRatio",
+            "/futures/data/globalLongShortAccountRatio",
+            "/futures/data/takerlongshortRatio",
+        ]
+    );
+    assert!(
+        requests
+            .iter()
+            .all(|r| query(r, "symbol") == Some("BTCUSDT"))
+    );
     assert_eq!(query(&requests[0], "interval"), Some("15m"));
     assert_eq!(query(&requests[3], "period"), Some("15m"));
 }
@@ -124,21 +131,20 @@ async fn binance_requests_all_futures_microstructure_endpoints() {
 #[tokio::test]
 async fn historical_binance_is_withheld_before_transport_execution() {
     let transport = MockTransport::with_responses([]);
-    let client = BinanceClient::new(
-        transport.clone(),
-        "https://binance.test",
-        now(),
-        Bangkok,
-    );
+    let client = BinanceClient::new(transport.clone(), "https://binance.test", now(), Bangkok);
 
-    let result = client.market_snapshot(&request("BTC-USD", 2026, 10, 5), "15m").await.unwrap();
+    let result = client
+        .market_snapshot(&request("BTC-USD", 2026, 10, 5), "15m")
+        .await
+        .unwrap();
     assert!(matches!(result, DataStatus::WithheldHistorical { .. }));
     assert!(transport.requests().is_empty());
 }
 
 #[tokio::test]
 async fn taapi_uses_bulk_constructs_and_bearer_auth() {
-    let transport = MockTransport::with_responses([json!({"data":[{"id":"rsi","result":{"value":55.0}}]})]);
+    let transport =
+        MockTransport::with_responses([json!({"data":[{"id":"rsi","result":{"value":55.0}}]})]);
     let client = TaapiClient::new(
         transport.clone(),
         "https://taapi.test",
@@ -147,7 +153,10 @@ async fn taapi_uses_bulk_constructs_and_bearer_auth() {
         Bangkok,
     );
 
-    let result = client.indicators(&request("ETH-USD", 2026, 10, 6), "1h").await.unwrap();
+    let result = client
+        .indicators(&request("ETH-USD", 2026, 10, 6), "1h")
+        .await
+        .unwrap();
     assert!(matches!(result, DataStatus::Available(_)));
     let requests = transport.requests();
     assert_eq!(requests.len(), 1);
@@ -158,7 +167,13 @@ async fn taapi_uses_bulk_constructs_and_bearer_auth() {
     let body = req.body.as_ref().unwrap();
     assert_eq!(body["constructs"][0]["symbol"], "ETH/USDT");
     assert_eq!(body["constructs"][0]["timeframe"], "1h");
-    assert!(body["constructs"][0]["indicators"].as_array().unwrap().len() >= 15);
+    assert!(
+        body["constructs"][0]["indicators"]
+            .as_array()
+            .unwrap()
+            .len()
+            >= 15
+    );
 }
 
 #[tokio::test]
@@ -168,8 +183,13 @@ async fn alternative_me_formats_fear_and_greed_history() {
         {"value":"55","value_classification":"Neutral"}
     ]})]);
     let client = AlternativeMeClient::new(transport, "https://alternative.test", now(), Bangkok);
-    let result = client.sentiment(&request("BTC-USD", 2026, 10, 6)).await.unwrap();
-    let DataStatus::Available(snapshot) = result else { panic!("expected sentiment") };
+    let result = client
+        .sentiment(&request("BTC-USD", 2026, 10, 6))
+        .await
+        .unwrap();
+    let DataStatus::Available(snapshot) = result else {
+        panic!("expected sentiment")
+    };
     assert!(snapshot.summary.contains("42 (Fear)"));
     assert!(snapshot.summary.contains("55 (Neutral)"));
 }
@@ -187,13 +207,22 @@ async fn coinstats_fetches_btc_dominance_with_api_key() {
         now(),
         Bangkok,
     );
-    let result = client.btc_dominance(&request("BTC-USD", 2026, 10, 6)).await.unwrap();
-    let DataStatus::Available(snapshot) = result else { panic!("expected dominance") };
+    let result = client
+        .btc_dominance(&request("BTC-USD", 2026, 10, 6))
+        .await
+        .unwrap();
+    let DataStatus::Available(snapshot) = result else {
+        panic!("expected dominance")
+    };
     assert!(snapshot.summary.contains("24h: 58.2%"));
     assert!(snapshot.summary.contains("1w: 57.9%"));
     let requests = transport.requests();
     assert_eq!(requests.len(), 2);
-    assert!(requests.iter().all(|r| header(r, "X-API-KEY") == Some("cs-key")));
+    assert!(
+        requests
+            .iter()
+            .all(|r| header(r, "X-API-KEY") == Some("cs-key"))
+    );
     assert_eq!(query(&requests[0], "type"), Some("24h"));
     assert_eq!(query(&requests[1], "type"), Some("1w"));
 }
@@ -210,22 +239,52 @@ async fn crypto_news_clients_parse_provider_shapes() {
         now(),
         Bangkok,
     );
-    let DataStatus::Available(cd_news) = coindesk.news(&request("BTC-USD", 2026, 10, 6), 10).await.unwrap() else { panic!() };
+    let DataStatus::Available(cd_news) = coindesk
+        .news(&request("BTC-USD", 2026, 10, 6), 10)
+        .await
+        .unwrap()
+    else {
+        panic!()
+    };
     assert!(cd_news.items[0].contains("ETF flows rise"));
-    assert_eq!(query(&coindesk_transport.requests()[0], "categories"), Some("BTC"));
-    assert_eq!(query(&coindesk_transport.requests()[0], "api_key"), Some("cd-key"));
+    assert_eq!(
+        query(&coindesk_transport.requests()[0], "categories"),
+        Some("BTC")
+    );
+    assert_eq!(
+        query(&coindesk_transport.requests()[0], "api_key"),
+        Some("cd-key")
+    );
 
     let cs_transport = MockTransport::with_responses([json!({"result":[{
         "title":"Protocol update","source":"CoinStats","description":"Upgrade shipped"
     }]})]);
-    let coinstats = CoinStatsClient::new(cs_transport, "https://coinstats.test", "cs-key", now(), Bangkok);
-    let DataStatus::Available(cs_news) = coinstats.news(&request("ETH-USD", 2026, 10, 6), 12).await.unwrap() else { panic!() };
+    let coinstats = CoinStatsClient::new(
+        cs_transport,
+        "https://coinstats.test",
+        "cs-key",
+        now(),
+        Bangkok,
+    );
+    let DataStatus::Available(cs_news) = coinstats
+        .news(&request("ETH-USD", 2026, 10, 6), 12)
+        .await
+        .unwrap()
+    else {
+        panic!()
+    };
     assert!(cs_news.items[0].contains("Protocol update"));
 
     let bb_transport = MockTransport::with_responses([json!({"data":{"data":[{
         "title":"快讯","create_time":"now","content":"市场更新"
     }]}})]);
     let blockbeats = BlockBeatsClient::new(bb_transport, "https://blockbeats.test", now(), Bangkok);
-    let DataStatus::Available(bb_news) = blockbeats.news(&request("BTC-USD", 2026, 10, 6), 10).await.unwrap() else { panic!() };
+    let DataStatus::Available(bb_news) = blockbeats
+        .news(&request("BTC-USD", 2026, 10, 6), 10)
+        .await
+        .unwrap()
+    else {
+        panic!()
+    };
     assert!(bb_news.items[0].contains("快讯"));
 }

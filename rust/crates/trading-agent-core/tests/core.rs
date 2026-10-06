@@ -1,5 +1,7 @@
 use chrono::NaiveDate;
-use trading_agent_core::{AgentState, AssetType, ModelTierConfig, RunConfig, Symbol, SCHEMA_VERSION};
+use trading_agent_core::{
+    AgentState, AssetType, ModelTierConfig, RunConfig, SCHEMA_VERSION, Symbol,
+};
 
 #[test]
 fn normalizes_crypto_symbols() {
@@ -55,8 +57,16 @@ fn config_fingerprint_tracks_behavior_but_not_secret_values() {
     let b = config("secret-b", "quick-a");
     let c = config("secret-a", "quick-b");
 
-    assert_eq!(a.fingerprint(), b.fingerprint(), "rotating a credential must not invalidate a run");
-    assert_ne!(a.fingerprint(), c.fingerprint(), "changing the model must invalidate a run");
+    assert_eq!(
+        a.fingerprint(),
+        b.fingerprint(),
+        "rotating a credential must not invalidate a run"
+    );
+    assert_ne!(
+        a.fingerprint(),
+        c.fingerprint(),
+        "changing the model must invalidate a run"
+    );
     assert!(!a.fingerprint().contains("secret-a"));
     assert!(!a.safe_metadata().to_string().contains("secret-a"));
 }

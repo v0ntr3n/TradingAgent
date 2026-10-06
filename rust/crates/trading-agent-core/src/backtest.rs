@@ -218,12 +218,7 @@ impl BacktestRunner {
                         let result = self.workflow.run(input).await?;
                         let outcome = self
                             .source
-                            .price_window(
-                                &symbol,
-                                as_of,
-                                request.holding_days,
-                                &request.benchmark,
-                            )
+                            .price_window(&symbol, as_of, request.holding_days, &request.benchmark)
                             .await?
                             .map(compute_outcome)
                             .transpose()?;

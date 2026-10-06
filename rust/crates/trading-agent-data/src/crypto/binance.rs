@@ -40,7 +40,9 @@ impl BinanceClient {
         request: &DataRequest,
         interval: &str,
     ) -> Result<DataStatus<MarketSnapshot>, DataError> {
-        if let Some(withheld) = historical_withheld("binance-live", request, self.now, self.timezone) {
+        if let Some(withheld) =
+            historical_withheld("binance-live", request, self.now, self.timezone)
+        {
             return Ok(withheld);
         }
 
@@ -80,7 +82,10 @@ impl BinanceClient {
         for (path, value_key) in [
             ("/futures/data/topLongShortPositionRatio", "longShortRatio"),
             ("/futures/data/topLongShortAccountRatio", "longShortRatio"),
-            ("/futures/data/globalLongShortAccountRatio", "longShortRatio"),
+            (
+                "/futures/data/globalLongShortAccountRatio",
+                "longShortRatio",
+            ),
             ("/futures/data/takerlongshortRatio", "buySellRatio"),
         ] {
             let value = self
@@ -109,12 +114,21 @@ impl BinanceClient {
         ];
 
         if let (Some(bid), Some(ask)) = (
-            depth.get("bids").and_then(Value::as_array).and_then(|rows| rows.first()),
-            depth.get("asks").and_then(Value::as_array).and_then(|rows| rows.first()),
+            depth
+                .get("bids")
+                .and_then(Value::as_array)
+                .and_then(|rows| rows.first()),
+            depth
+                .get("asks")
+                .and_then(Value::as_array)
+                .and_then(|rows| rows.first()),
         ) {
             lines.push(format!(
                 "Best bid: {} ({}) | Best ask: {} ({})",
-                scalar(&bid[0]), scalar(&bid[1]), scalar(&ask[0]), scalar(&ask[1])
+                scalar(&bid[0]),
+                scalar(&bid[1]),
+                scalar(&ask[0]),
+                scalar(&ask[1])
             ));
         }
 
@@ -124,8 +138,12 @@ impl BinanceClient {
                     if row.len() >= 6 {
                         lines.push(format!(
                             "Candle {}: O {} H {} L {} C {} V {}",
-                            scalar(&row[0]), scalar(&row[1]), scalar(&row[2]), scalar(&row[3]),
-                            scalar(&row[4]), scalar(&row[5])
+                            scalar(&row[0]),
+                            scalar(&row[1]),
+                            scalar(&row[2]),
+                            scalar(&row[3]),
+                            scalar(&row[4]),
+                            scalar(&row[5])
                         ));
                     }
                 }
