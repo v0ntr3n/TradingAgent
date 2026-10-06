@@ -9,6 +9,11 @@ license.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
+reqwest.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 trading-agent-core = { path = "../trading-agent-core" }
+
+[dev-dependencies]
+tokio.workspace = true
