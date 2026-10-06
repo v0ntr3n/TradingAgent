@@ -1,0 +1,30 @@
+[package]
+name = "trading-agent-cli"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "trading-agent"
+path = "src/main.rs"
+
+[dependencies]
+chrono.workspace = true
+chrono-tz.workspace = true
+clap.workspace = true
+rust_decimal.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+trading-agent-core = { path = "../trading-agent-core" }
+trading-agent-data = { path = "../trading-agent-data" }
+trading-agent-llm = { path = "../trading-agent-llm" }
+trading-agent-reporting = { path = "../trading-agent-reporting" }
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+tempfile.workspace = true
+tiny_http.workspace = true

@@ -1,0 +1,15 @@
+[package]
+name = "trading-agent-reporting"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+thiserror.workspace = true
+trading-agent-core = { path = "../trading-agent-core" }
+
+[dev-dependencies]
+chrono.workspace = true
+tempfile.workspace = true

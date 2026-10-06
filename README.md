@@ -113,6 +113,27 @@ The selected analysts work at the same time, each on its own tools, and the rese
 
 ## Installation and CLI
 
+### Native Rust implementation
+
+This repository also contains a side-by-side native Rust implementation under [`rust/`](rust/README.md). It uses typed state and a Tokio workflow rather than LangGraph, while preserving the same analyst → research debate → trader → risk → portfolio-manager flow. The Rust path includes stock and crypto evidence adapters, point-in-time guards, separate quick/deep LLM tiers, investment preferences, external reports, portfolio context, structured trade levels, checkpointing, reports, decision memory, and analytical backtesting.
+
+Build and verify it with:
+
+```bash
+cd rust
+cargo fmt --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace
+```
+
+The Rust CLI is headless and does not prompt:
+
+```bash
+cargo run -p trading-agent-cli -- BTC-USD --date 2026-10-06 --analysts market,sentiment,news,fundamentals
+```
+
+See [`rust/README.md`](rust/README.md) for provider keys, configuration precedence, file inputs, reports, checkpointing, and current data-source behavior.
+
 ### Installation
 
 Clone TradingAgents:

@@ -1,0 +1,25 @@
+{
+  "name": "crypto-current",
+  "symbol": "BTCUSDT",
+  "date": "current",
+  "expected_asset_type": "crypto",
+  "expected_rating": "buy",
+  "expected_reports": ["market", "sentiment", "news", "fundamentals"],
+  "expected_vendor_paths": [
+    "/binance/fapi/v1/klines",
+    "/binance/fapi/v1/depth",
+    "/binance/fapi/v1/ticker/24hr",
+    "/binance/futures/data/topLongShortPositionRatio",
+    "/taapi/bulk",
+    "/alternative/fng/",
+    "/blockbeats/v1/open-api/open-flash",
+    "/coindesk/news/v1/article/list",
+    "/coinstats/news/type/latest",
+    "/coinstats/insights/btc-dominance"
+  ],
+  "expected_quick_labels": ["search", "market", "sentiment", "news", "fundamentals", "bull", "bear", "trader", "risk_aggressive", "risk_neutral", "risk_conservative"],
+  "expected_deep_labels": ["research_manager", "portfolio_manager"],
+  "expected_search_calls": 1,
+  "report_status_contains": "available",
+  "approved_extensions": ["crypto_fundamentals"]
+}
