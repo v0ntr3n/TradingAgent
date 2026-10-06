@@ -1,0 +1,14 @@
+{
+  "name": "crypto-historical",
+  "symbol": "BTCUSDT",
+  "date": "2026-10-01",
+  "expected_asset_type": "crypto",
+  "expected_rating": "buy",
+  "expected_reports": ["market", "sentiment", "news", "fundamentals"],
+  "expected_vendor_paths": [],
+  "expected_quick_labels": ["market", "sentiment", "news", "fundamentals", "bull", "bear", "trader", "risk_aggressive", "risk_neutral", "risk_conservative"],
+  "expected_deep_labels": ["research_manager", "portfolio_manager"],
+  "expected_search_calls": 0,
+  "report_status_contains": "withheld",
+  "approved_extensions": ["crypto_fundamentals"]
+}

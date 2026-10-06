@@ -27,3 +27,4 @@ trading-agent-reporting = { path = "../trading-agent-reporting" }
 assert_cmd.workspace = true
 predicates.workspace = true
 tempfile.workspace = true
+tiny_http.workspace = true

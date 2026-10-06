@@ -1,0 +1,14 @@
+{
+  "name": "stock-current",
+  "symbol": "AAPL",
+  "date": "2026-10-06",
+  "expected_asset_type": "stock",
+  "expected_rating": "buy",
+  "expected_reports": ["market", "sentiment", "news", "fundamentals"],
+  "expected_vendor_paths": ["/yahoo/v8/finance/chart/AAPL", "/polymarket/markets"],
+  "expected_quick_labels": ["search", "search", "market", "sentiment", "news", "fundamentals", "bull", "bear", "trader", "risk_aggressive", "risk_neutral", "risk_conservative"],
+  "expected_deep_labels": ["research_manager", "portfolio_manager"],
+  "expected_search_calls": 2,
+  "report_status_contains": "available",
+  "approved_extensions": []
+}

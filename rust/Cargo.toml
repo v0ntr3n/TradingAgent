@@ -29,4 +29,5 @@ tempfile = "3"
 predicates = "3"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
+tiny_http = "0.12"
 url = "2"
