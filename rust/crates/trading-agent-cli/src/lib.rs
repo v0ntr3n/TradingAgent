@@ -7,7 +7,7 @@ mod run;
 use thiserror::Error;
 
 pub use args::CliArgs;
-pub use config::{EnvSource, ProcessEnv, ResolvedCliConfig, resolve_config};
+pub use config::{DataEndpoints, EnvSource, ProcessEnv, ResolvedCliConfig, resolve_config};
 pub use run::{build_run_input, run_from_args};
 
 #[derive(Debug, Error)]

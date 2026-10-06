@@ -153,13 +153,13 @@ async fn collect_evidence(
     let http = Arc::new(ReqwestTransport::new());
 
     if resolved.symbol.asset_type() == trading_agent_core::AssetType::Crypto {
-        let binance = BinanceClient::new(http.clone(), "https://fapi.binance.com", now, UTC);
+        let binance = BinanceClient::new(http.clone(), &resolved.data_endpoints.binance, now, UTC);
         let market = match binance.market_snapshot(&request, "15m").await {
             Ok(status) => market_evidence(status),
             Err(error) => unavailable("binance", error.to_string()),
         };
         let market = if let Some(key) = env.get("TAAPI_API_KEY") {
-            let taapi = TaapiClient::new(http.clone(), "https://api.taapi.io", key, now, UTC);
+            let taapi = TaapiClient::new(http.clone(), &resolved.data_endpoints.taapi, key, now, UTC);
             match taapi.indicators(&request, "15m").await {
                 Ok(status) => combine_evidence("crypto-market", vec![market, technical_evidence(status)]),
                 Err(error) => combine_evidence("crypto-market", vec![market, unavailable("taapi", error.to_string())]),
@@ -168,26 +168,26 @@ async fn collect_evidence(
             market
         };
 
-        let sentiment_client = AlternativeMeClient::new(http.clone(), "https://api.alternative.me", now, UTC);
+        let sentiment_client = AlternativeMeClient::new(http.clone(), &resolved.data_endpoints.alternative_me, now, UTC);
         let sentiment = match sentiment_client.sentiment(&request).await {
             Ok(status) => sentiment_evidence(status),
             Err(error) => unavailable("alternative_me", error.to_string()),
         };
 
-        let blockbeats = BlockBeatsClient::new(http.clone(), "https://api.theblockbeats.news", now, UTC);
+        let blockbeats = BlockBeatsClient::new(http.clone(), &resolved.data_endpoints.blockbeats, now, UTC);
         let mut news_parts = vec![match blockbeats.news(&request, 10).await {
             Ok(status) => news_evidence(status),
             Err(error) => unavailable("blockbeats", error.to_string()),
         }];
         if let Some(key) = env.get("COINDESK_API_KEY") {
-            let client = CoinDeskClient::new(http.clone(), "https://data-api.coindesk.com", key, now, UTC);
+            let client = CoinDeskClient::new(http.clone(), &resolved.data_endpoints.coindesk, key, now, UTC);
             news_parts.push(match client.news(&request, 10).await {
                 Ok(status) => news_evidence(status),
                 Err(error) => unavailable("coindesk", error.to_string()),
             });
         }
         if let Some(key) = env.get("COINSTATS_API_KEY") {
-            let client = CoinStatsClient::new(http.clone(), "https://openapiv1.coinstats.app", key.clone(), now, UTC);
+            let client = CoinStatsClient::new(http.clone(), &resolved.data_endpoints.coinstats, key.clone(), now, UTC);
             news_parts.push(match client.news(&request, 10).await {
                 Ok(status) => news_evidence(status),
                 Err(error) => unavailable("coinstats", error.to_string()),
@@ -197,7 +197,7 @@ async fn collect_evidence(
 
         let mut fundamental_parts = Vec::new();
         if let Some(key) = env.get("COINSTATS_API_KEY") {
-            let client = CoinStatsClient::new(http.clone(), "https://openapiv1.coinstats.app", key, now, UTC);
+            let client = CoinStatsClient::new(http.clone(), &resolved.data_endpoints.coinstats, key, now, UTC);
             fundamental_parts.push(match client.btc_dominance(&request).await {
                 Ok(status) => fundamentals_evidence(status),
                 Err(error) => unavailable("coinstats", error.to_string()),
@@ -218,7 +218,7 @@ async fn collect_evidence(
         AgentEvidence { market, sentiment, news, fundamentals }
     } else {
         let market = if resolved.trade_date == today {
-            let yahoo = YahooProvider::new(http.clone(), "https://query1.finance.yahoo.com");
+            let yahoo = YahooProvider::new(http.clone(), &resolved.data_endpoints.yahoo);
             match yahoo.market_snapshot(&request).await {
                 Ok(status) => market_evidence(status),
                 Err(error) => unavailable("yahoo", error.to_string()),
@@ -228,7 +228,7 @@ async fn collect_evidence(
         };
 
         let sentiment = if resolved.trade_date == today {
-            let polymarket = PolymarketProvider::new(http, "https://gamma-api.polymarket.com", today);
+            let polymarket = PolymarketProvider::new(http, &resolved.data_endpoints.polymarket, today);
             match polymarket.sentiment(&request).await {
                 Ok(status) => sentiment_evidence(status),
                 Err(error) => unavailable("polymarket", error.to_string()),

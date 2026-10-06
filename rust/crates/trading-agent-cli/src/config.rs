@@ -21,6 +21,41 @@ impl EnvSource for ProcessEnv {
 }
 
 #[derive(Clone, Debug)]
+pub struct DataEndpoints {
+    pub binance: String,
+    pub taapi: String,
+    pub alternative_me: String,
+    pub blockbeats: String,
+    pub coindesk: String,
+    pub coinstats: String,
+    pub yahoo: String,
+    pub polymarket: String,
+}
+
+impl DataEndpoints {
+    fn resolve(env: &dyn EnvSource) -> Self {
+        Self {
+            binance: env.get("TRADINGAGENTS_BINANCE_BASE_URL")
+                .unwrap_or_else(|| "https://fapi.binance.com".into()),
+            taapi: env.get("TRADINGAGENTS_TAAPI_BASE_URL")
+                .unwrap_or_else(|| "https://api.taapi.io".into()),
+            alternative_me: env.get("TRADINGAGENTS_ALTERNATIVE_ME_BASE_URL")
+                .unwrap_or_else(|| "https://api.alternative.me".into()),
+            blockbeats: env.get("TRADINGAGENTS_BLOCKBEATS_BASE_URL")
+                .unwrap_or_else(|| "https://api.theblockbeats.news".into()),
+            coindesk: env.get("TRADINGAGENTS_COINDESK_BASE_URL")
+                .unwrap_or_else(|| "https://data-api.coindesk.com".into()),
+            coinstats: env.get("TRADINGAGENTS_COINSTATS_BASE_URL")
+                .unwrap_or_else(|| "https://openapiv1.coinstats.app".into()),
+            yahoo: env.get("TRADINGAGENTS_YAHOO_BASE_URL")
+                .unwrap_or_else(|| "https://query1.finance.yahoo.com".into()),
+            polymarket: env.get("TRADINGAGENTS_POLYMARKET_BASE_URL")
+                .unwrap_or_else(|| "https://gamma-api.polymarket.com".into()),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ResolvedCliConfig {
     pub symbol: Symbol,
     pub trade_date: NaiveDate,
@@ -28,6 +63,7 @@ pub struct ResolvedCliConfig {
     pub results_dir: PathBuf,
     pub checkpoint_path: Option<PathBuf>,
     pub memory_path: PathBuf,
+    pub data_endpoints: DataEndpoints,
 }
 
 impl ResolvedCliConfig {
@@ -210,6 +246,7 @@ pub fn resolve_config(args: &CliArgs, env: &dyn EnvSource) -> Result<ResolvedCli
         results_dir,
         checkpoint_path,
         memory_path,
+        data_endpoints: DataEndpoints::resolve(env),
     })
 }
 

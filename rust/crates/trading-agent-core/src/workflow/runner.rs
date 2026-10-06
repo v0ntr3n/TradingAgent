@@ -159,8 +159,8 @@ impl WorkflowRunner {
                     evidence: &evidence,
                     output_language: &config.output_language,
                 };
-                let bull = run_researcher(self.deep.as_ref(), ResearchSide::Bull, &context).await?;
-                let bear = run_researcher(self.deep.as_ref(), ResearchSide::Bear, &context).await?;
+                let bull = run_researcher(self.quick.as_ref(), ResearchSide::Bull, &context).await?;
+                let bear = run_researcher(self.quick.as_ref(), ResearchSide::Bear, &context).await?;
                 append_debate_round(&mut debate_transcript, round, &bull, &bear);
             }
 
@@ -188,7 +188,7 @@ impl WorkflowRunner {
                     evidence: &evidence,
                     output_language: &config.output_language,
                 };
-                run_trader(self.deep.as_ref(), &context).await?
+                run_trader(self.quick.as_ref(), &context).await?
             };
             state.trader_plan = Some(proposal.reasoning.clone());
             state.trader_proposal = Some(proposal);
@@ -212,7 +212,7 @@ impl WorkflowRunner {
                     evidence: &evidence,
                     output_language: &config.output_language,
                 };
-                let report = run_risk_analyst(self.deep.as_ref(), stance, &context).await?;
+                let report = run_risk_analyst(self.quick.as_ref(), stance, &context).await?;
                 risk_reports.push(report);
             }
         }
