@@ -260,7 +260,12 @@ pub fn assert_fixture(fixture: &ParityFixture, result: &RunResult, records: &[Re
             other => panic!("unknown report {other}"),
         };
         let text = present.unwrap_or_else(|| panic!("missing {report} report"));
-        assert!(text.to_ascii_lowercase().contains(&fixture.report_status_contains));
+        assert!(
+            text.to_ascii_lowercase().contains(&fixture.report_status_contains),
+            "{} report status mismatch: {}",
+            report,
+            text,
+        );
     }
 
     let proposal = result.state.trader_proposal.as_ref().unwrap();
