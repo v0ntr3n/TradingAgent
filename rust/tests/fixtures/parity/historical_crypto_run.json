@@ -1,7 +1,7 @@
 {
   "name": "crypto-historical",
   "symbol": "BTCUSDT",
-  "date": "2026-10-01",
+  "date": "historical-5d",
   "expected_asset_type": "crypto",
   "expected_rating": "buy",
   "expected_reports": ["market", "sentiment", "news", "fundamentals"],
