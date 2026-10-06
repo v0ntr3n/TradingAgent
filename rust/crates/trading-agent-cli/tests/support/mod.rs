@@ -124,7 +124,11 @@ fn route(url: &str, body: &str) -> (Value, Option<String>) {
             "portfolio_manager" => "**Rating**: Buy\n\nfixture final decision".into(),
             "search" => "fixture search evidence".into(),
             other if matches!(other, "market" | "sentiment" | "news" | "fundamentals") => {
-                let status = if prompt.contains("WITHHELD_HISTORICAL") { "withheld" } else { "available" };
+                let status = if prompt.contains("EVIDENCE STATUS: WITHHELD_HISTORICAL") {
+                    "withheld"
+                } else {
+                    "available"
+                };
                 format!("{other} report {status}")
             }
             other => format!("{other} fixture output"),
