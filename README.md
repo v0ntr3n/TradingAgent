@@ -417,3 +417,26 @@ Please reference our work if you find *TradingAgents* provides you with some hel
       url={https://arxiv.org/abs/2412.20138}, 
 }
 ```
+## Crypto enrichment
+
+This fork retains the crypto focus of Tomortec/CryptoTradingAgents on top of the
+current TradingAgents architecture. Native v0.6 crypto mode remains the primary
+pipeline (for example `BTC-USD` / `ETH-USD`), with optional live enrichment:
+
+- Binance USD-M futures candles, order-book top, 24-hour statistics, and
+  long/short positioning (no API key required).
+- TAAPI bulk technical indicators when `TAAPI_API_KEY` is set.
+- Alternative.me Fear & Greed (no API key required) and CoinStats BTC dominance
+  when `COINSTATS_API_KEY` is set.
+- CoinDesk crypto news when `COINDESK_API_KEY` is set, plus CoinStats and
+  BlockBeats news.
+
+These feeds are intentionally **withheld in historical runs** because they are
+live/recent APIs without a reliable historical vintage. This preserves the
+upstream point-in-time/backtest guarantees instead of leaking present-day data
+into an older analysis date.
+
+The original Tomortec Qwen and multilingual changes are not separately carried
+forward because upstream v0.6 already provides current Qwen (global and China)
+support and multi-language output. Gitee/OpenAI-compatible services can be used
+through the upstream `openai_compatible` provider with a custom endpoint.\n
