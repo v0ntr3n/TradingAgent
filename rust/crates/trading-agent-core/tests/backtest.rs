@@ -108,7 +108,7 @@ impl BacktestDataSource for FixtureSource {
             base_url: None,
             api_key: None,
         };
-        Ok(BacktestInput::Available(RunInput {
+        Ok(BacktestInput::Available(Box::new(RunInput {
             state,
             evidence: AgentEvidence {
                 market: Evidence::Available(format!("market as-of {as_of}")),
@@ -124,7 +124,7 @@ impl BacktestDataSource for FixtureSource {
                 max_debate_rounds: 0,
                 max_risk_rounds: 0,
             },
-        }))
+        })))
     }
 
     async fn price_window(

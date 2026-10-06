@@ -11,7 +11,7 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub enum BacktestInput {
-    Available(RunInput),
+    Available(Box<RunInput>),
     Unavailable { reason: String },
 }
 
@@ -215,7 +215,7 @@ impl BacktestRunner {
                     }
                     BacktestInput::Available(input) => {
                         validate_input(&symbol, as_of, &input)?;
-                        let result = self.workflow.run(input).await?;
+                        let result = self.workflow.run(*input).await?;
                         let outcome = self
                             .source
                             .price_window(&symbol, as_of, request.holding_days, &request.benchmark)
