@@ -1,9 +1,11 @@
 //! Native Rust core for TradingAgent.
 
 pub mod agents;
+pub mod checkpoint;
 mod config;
 mod decision;
 mod error;
+pub mod events;
 mod external;
 mod portfolio;
 mod preferences;

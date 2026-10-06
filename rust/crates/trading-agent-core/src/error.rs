@@ -12,6 +12,10 @@ pub enum CoreError {
     InvalidDecision(String),
     #[error("LLM error: {0}")]
     Llm(String),
+    #[error("checkpoint error: {0}")]
+    Checkpoint(String),
+    #[error("persistence error: {0}")]
+    Persistence(String),
     #[error("invalid JSON: {0}")]
     Json(#[from] serde_json::Error),
 }
