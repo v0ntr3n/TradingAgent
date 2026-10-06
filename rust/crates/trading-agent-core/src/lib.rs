@@ -9,6 +9,7 @@ mod portfolio;
 mod preferences;
 mod state;
 mod symbol;
+pub mod workflow;
 
 pub use config::{ModelTierConfig, RunConfig};
 pub use decision::{PositionSizing, TraderAction, TraderProposal};
