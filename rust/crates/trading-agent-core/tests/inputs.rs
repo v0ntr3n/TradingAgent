@@ -69,7 +69,7 @@ fn portfolio_distinguishes_flat_context_from_missing_context() {
         currency: Some("USD".into()),
         positions: vec![Position {
             symbol: symbol.clone(),
-            quantity: Decimal::new(25, 2),
+            quantity: Decimal::new(25, 1),
             average_price: Some(Decimal::new(62_50000, 2)),
         }],
     };
