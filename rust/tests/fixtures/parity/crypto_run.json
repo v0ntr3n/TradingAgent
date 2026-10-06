@@ -1,7 +1,7 @@
 {
   "name": "crypto-current",
   "symbol": "BTCUSDT",
-  "date": "2026-10-06",
+  "date": "current",
   "expected_asset_type": "crypto",
   "expected_rating": "buy",
   "expected_reports": ["market", "sentiment", "news", "fundamentals"],
