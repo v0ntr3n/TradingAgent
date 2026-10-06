@@ -1,6 +1,7 @@
 //! Native Rust core for TradingAgent.
 
 pub mod agents;
+pub mod backtest;
 pub mod checkpoint;
 mod config;
 mod decision;
