@@ -9,9 +9,18 @@ from typing import Annotated
 from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedState
 
-from tradingagents.dataflows.date_window import as_of, as_of_window
+from tradingagents.dataflows.date_window import as_of, as_of_window, is_historical
 from tradingagents.dataflows.errors import NoMarketDataError, VendorUnavailableError
 from tradingagents.dataflows.router import no_data_available, route_to_vendor, vendor_unavailable
+from tradingagents.dataflows.vendors.crypto import (
+    fetch_binance_market_summary,
+    fetch_blockbeats_news,
+    fetch_coindesk_news,
+    fetch_coinstats_btc_dominance,
+    fetch_coinstats_news,
+    fetch_fear_and_greed,
+    fetch_taapi_bulk,
+)
 from tradingagents.dataflows.vendors.yahoo.snapshot import build_verified_market_snapshot
 
 
@@ -289,3 +298,70 @@ def get_prediction_markets(
         str: A formatted markdown report of matching prediction markets
     """
     return route_to_vendor("get_prediction_markets", topic, limit, trade_date or None)
+
+
+
+def _live_crypto_withheld(trade_date: str, source: str) -> str | None:
+    if not is_historical(trade_date):
+        return None
+    return (
+        f"<{source} withheld for historical run {trade_date}: this source is live/recent "
+        "and has no reliable historical vintage, so serving it would introduce look-ahead bias>"
+    )
+
+
+@tool
+def get_crypto_market_data(
+    symbol: Annotated[str, InjectedState("company_of_interest")],
+    interval: Annotated[str, "Binance futures interval such as 5m, 15m, 1h, 4h, or 1d"] = "15m",
+    trade_date: Annotated[str, InjectedState("trade_date")] = "",
+) -> str:
+    """Live-only Binance USD-M futures enrichment for crypto analyses.
+
+    Returns recent candles, top-of-book depth, 24-hour price statistics and
+    long/short positioning. Do not use this tool for stocks.
+    """
+    withheld = _live_crypto_withheld(trade_date, "Binance crypto enrichment")
+    return withheld or fetch_binance_market_summary(symbol, interval)
+
+
+@tool
+def get_crypto_indicators(
+    symbol: Annotated[str, InjectedState("company_of_interest")],
+    interval: Annotated[str, "TAAPI timeframe such as 5m, 15m, 1h, 4h, or 1d"] = "15m",
+    trade_date: Annotated[str, InjectedState("trade_date")] = "",
+) -> str:
+    """Live-only TAAPI bulk technical indicators for the crypto pair under analysis."""
+    withheld = _live_crypto_withheld(trade_date, "TAAPI crypto indicators")
+    return withheld or fetch_taapi_bulk(symbol, interval)
+
+
+@tool
+def get_crypto_sentiment_context(
+    symbol: Annotated[str, InjectedState("company_of_interest")],
+    trade_date: Annotated[str, InjectedState("trade_date")] = "",
+) -> str:
+    """Live-only broad crypto sentiment: Fear & Greed plus BTC dominance."""
+    withheld = _live_crypto_withheld(trade_date, "crypto sentiment enrichment")
+    if withheld:
+        return withheld
+    return "\n\n".join((fetch_fear_and_greed(), fetch_coinstats_btc_dominance()))
+
+
+@tool
+def get_crypto_news(
+    symbol: Annotated[str, InjectedState("company_of_interest")],
+    limit: Annotated[int, "Articles/items per crypto news source"] = 10,
+    trade_date: Annotated[str, InjectedState("trade_date")] = "",
+) -> str:
+    """Live-only crypto-news enrichment from CoinDesk, CoinStats and BlockBeats."""
+    withheld = _live_crypto_withheld(trade_date, "crypto news enrichment")
+    if withheld:
+        return withheld
+    return "\n\n".join(
+        (
+            fetch_coindesk_news(symbol, limit),
+            fetch_coinstats_news(limit),
+            fetch_blockbeats_news(limit),
+        )
+    )
