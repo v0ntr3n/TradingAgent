@@ -53,18 +53,16 @@ struct RawTraderProposal {
 impl TraderProposal {
     pub fn from_json_str(input: &str) -> Result<Self, CoreError> {
         let raw: RawTraderProposal = serde_json::from_str(input)?;
-        let position_sizing = raw
-            .position_sizing
-            .map(|sizing| {
-                Ok(PositionSizing {
-                    description: sizing.description,
-                    percent_of_portfolio: parse_optional_decimal(
-                        sizing.percent_of_portfolio,
-                        "position_sizing.percent_of_portfolio",
-                    )?,
-                })
-            })
-            .transpose()?;
+        let position_sizing = match raw.position_sizing {
+            Some(sizing) => Some(PositionSizing {
+                description: sizing.description,
+                percent_of_portfolio: parse_optional_decimal(
+                    sizing.percent_of_portfolio,
+                    "position_sizing.percent_of_portfolio",
+                )?,
+            }),
+            None => None,
+        };
 
         Ok(Self {
             action: raw.action,
