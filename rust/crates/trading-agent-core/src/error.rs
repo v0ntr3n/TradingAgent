@@ -10,6 +10,8 @@ pub enum CoreError {
     InvalidPreferences(String),
     #[error("invalid trade decision: {0}")]
     InvalidDecision(String),
+    #[error("LLM error: {0}")]
+    Llm(String),
     #[error("invalid JSON: {0}")]
     Json(#[from] serde_json::Error),
 }
