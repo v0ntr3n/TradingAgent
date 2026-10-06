@@ -131,3 +131,10 @@ fn escape_html(value: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
 }
+
+impl trading_agent_core::events::EventSink for ReportWriter {
+    fn emit(&self, event: &trading_agent_core::events::RunEvent) -> Result<(), trading_agent_core::CoreError> {
+        self.write_event(event)
+            .map_err(|error| trading_agent_core::CoreError::Persistence(error.to_string()))
+    }
+}
