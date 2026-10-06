@@ -6,6 +6,6 @@ pub enum DataError {
     InvalidConfig(String),
     #[error("no vendor chain configured for {0}")]
     MissingChain(String),
-    #[error("{source}: {message}")]
-    Source { source: String, message: String },
+    #[error("{vendor}: {message}")]
+    Vendor { vendor: String, message: String },
 }
