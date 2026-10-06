@@ -6,6 +6,7 @@ use std::{
 };
 
 use clap::Parser;
+use chrono::{Days, Utc};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tempfile::TempDir;
@@ -152,7 +153,13 @@ fn route(url: &str, body: &str) -> (Value, Option<String>) {
     } else if url.starts_with("/coinstats/insights/btc-dominance") {
         json!({"data":[[1,52.1]]})
     } else if url.starts_with("/yahoo/v8/finance/chart/AAPL") {
-        json!({"chart":{"result":[{"timestamp":[1791244800],"indicators":{"quote":[{"close":[210.0]}]}}]}})
+        let timestamp = Utc::now()
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp();
+        json!({"chart":{"result":[{"timestamp":[timestamp],"indicators":{"quote":[{"close":[210.0]}]}}]}})
     } else if url.starts_with("/polymarket/markets") {
         json!({"markets":[{"question":"fixture market"}]})
     } else {
@@ -213,11 +220,18 @@ pub async fn run_fixture(fixture: &ParityFixture) -> (RunResult, Vec<RequestReco
         .set("TRADINGAGENTS_YAHOO_BASE_URL", server.base("/yahoo"))
         .set("TRADINGAGENTS_POLYMARKET_BASE_URL", server.base("/polymarket"));
 
+    let today = Utc::now().date_naive();
+    let run_date = match fixture.date.as_str() {
+        "current" => today,
+        "historical-5d" => today.checked_sub_days(Days::new(5)).unwrap(),
+        other => chrono::NaiveDate::parse_from_str(other, "%Y-%m-%d").unwrap(),
+    };
+
     let args = CliArgs::try_parse_from(vec![
         "trading-agent".into(),
         fixture.symbol.clone(),
         "--date".into(),
-        fixture.date.clone(),
+        run_date.format("%Y-%m-%d").to_string(),
         "--analysts".into(),
         "market,sentiment,news,fundamentals".into(),
         "--quick-provider".into(),
