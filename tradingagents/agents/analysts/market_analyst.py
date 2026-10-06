@@ -2,13 +2,21 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from tradingagents.agents.analysts.turn import take_turn
 from tradingagents.agents.context import get_instrument_context_from_state, get_language_instruction
-from tradingagents.agents.tools import get_indicators, get_stock_data, get_verified_market_snapshot
+from tradingagents.agents.tools import (
+    get_crypto_indicators,
+    get_crypto_market_data,
+    get_indicators,
+    get_stock_data,
+    get_verified_market_snapshot,
+)
 
 # The tools this analyst is offered; its tool node is built from the same tuple.
 TOOLS = (
     get_stock_data,
     get_indicators,
     get_verified_market_snapshot,
+    get_crypto_market_data,
+    get_crypto_indicators,
 )
 
 
@@ -16,7 +24,18 @@ def create_market_analyst(llm):
 
     def market_analyst_node(state):
         current_date = state["trade_date"]
+        asset_type = state.get("asset_type", "stock")
         instrument_context = get_instrument_context_from_state(state)
+        crypto_guidance = ""
+        if asset_type == "crypto":
+            crypto_guidance = """
+For crypto only, enrich the Yahoo-based market analysis with get_crypto_market_data.
+Use at least the 15m and 1h intervals when useful so short- and medium-horizon
+futures positioning can be compared. If TAAPI_API_KEY is configured, call
+get_crypto_indicators once for a complementary crypto indicator snapshot.
+These enrichment feeds are live-only; if a historical run says they are
+withheld, do not infer or reconstruct their values.
+"""
 
         system_message = (
             """You are a trading assistant tasked with analyzing financial markets. Your role is to select the **most relevant indicators** for a given market condition or trading strategy from the following list. The goal is to choose up to **8 indicators** that provide complementary insights without redundancy. Categories and each category's indicators are:
@@ -48,6 +67,7 @@ Volume-Based Indicators:
 Before writing the final report, call get_verified_market_snapshot for this ticker and the current date, and treat it as the source of truth for any exact OHLCV, price-level, or indicator-value claim. If another tool's output conflicts with the verified snapshot, flag the discrepancy rather than inventing a reconciled number. Do not claim historical validation, support/resistance bounces, or exact percentage moves unless they are directly supported by tool output with concrete dates and prices.
 
 Write a very detailed and nuanced report of the trends you observe. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."""
+            + crypto_guidance
             + """ Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."""
             + get_language_instruction()
         )
