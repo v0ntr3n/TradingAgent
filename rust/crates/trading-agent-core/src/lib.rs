@@ -7,6 +7,7 @@ mod decision;
 mod error;
 pub mod events;
 mod external;
+pub mod memory;
 mod portfolio;
 mod preferences;
 mod state;

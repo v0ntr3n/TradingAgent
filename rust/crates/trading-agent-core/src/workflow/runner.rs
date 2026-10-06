@@ -11,6 +11,7 @@ use crate::{
     },
     checkpoint::{CheckpointEnvelope, CheckpointStore, CompletedStage, RunSignature},
     events::{EventSink, RunEvent, WorkflowStage},
+    memory::{DecisionMemory, DecisionRecord, SettlementHook},
 };
 
 use super::{
@@ -36,6 +37,8 @@ pub struct WorkflowRunner {
     deep: Arc<dyn LlmClient>,
     checkpoint_store: Option<Arc<dyn CheckpointStore>>,
     event_sink: Option<Arc<dyn EventSink>>,
+    decision_memory: Option<Arc<dyn DecisionMemory>>,
+    settlement_hook: Option<Arc<dyn SettlementHook>>,
 }
 
 impl WorkflowRunner {
@@ -45,6 +48,8 @@ impl WorkflowRunner {
             deep,
             checkpoint_store: None,
             event_sink: None,
+            decision_memory: None,
+            settlement_hook: None,
         }
     }
 
@@ -58,7 +63,30 @@ impl WorkflowRunner {
         self
     }
 
-    pub async fn run(&self, input: RunInput) -> Result<RunResult, CoreError> {
+    pub fn with_decision_memory(mut self, memory: Arc<dyn DecisionMemory>) -> Self {
+        self.decision_memory = Some(memory);
+        self
+    }
+
+    pub fn with_settlement_hook(mut self, hook: Arc<dyn SettlementHook>) -> Self {
+        self.settlement_hook = Some(hook);
+        self
+    }
+
+    pub async fn run(&self, mut input: RunInput) -> Result<RunResult, CoreError> {
+        if let Some(memory) = &self.decision_memory {
+            if let Some(hook) = &self.settlement_hook {
+                let _ = hook.settle_pending(memory.as_ref()).await;
+            }
+            input.state.past_context = memory.context_as_of(
+                &input.state.symbol.to_string(),
+                Some(input.state.trade_date),
+            )?.into();
+            if input.state.past_context.as_deref() == Some("") {
+                input.state.past_context = None;
+            }
+        }
+
         let signature = RunSignature::from_inputs(&input);
         let metadata = RunSignature::safe_metadata(&input);
         let mut state = input.state.clone();
@@ -214,6 +242,15 @@ impl WorkflowRunner {
             content: final_report.content,
         })?;
 
+        if let Some(memory) = &self.decision_memory {
+            memory.store_decision(DecisionRecord {
+                ticker: state.symbol.to_string(),
+                trade_date: state.trade_date,
+                final_decision: state.final_decision.clone().unwrap_or_default(),
+                rating,
+                resolved: None,
+            })?;
+        }
         if let Some(store) = &self.checkpoint_store {
             store.clear()?;
         }
