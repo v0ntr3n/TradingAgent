@@ -6,6 +6,10 @@ pub enum CoreError {
     InvalidSymbol(String),
     #[error("invalid configuration: {0}")]
     InvalidConfig(String),
+    #[error("invalid investment preferences: {0}")]
+    InvalidPreferences(String),
+    #[error("invalid trade decision: {0}")]
+    InvalidDecision(String),
     #[error("invalid JSON: {0}")]
     Json(#[from] serde_json::Error),
 }
